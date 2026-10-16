@@ -19,7 +19,7 @@ https://uranioempobrecido.github.io/NANO-Updater/
     file's date). `python3 release.py` copies them here, checks each one against its product
     and writes its `firmware.json`; `python3 release.py fum` does one product.
 
-- Type: JetBrains Mono (Google Fonts), regular weight, all capitals: the brand's choice. `fonts/` holds "NANO Screen", the
+- Type: JetBrains Mono (Google Fonts), regular weight only: the brand's choice. `fonts/` holds "NANO Screen", the
   FX-DR2's own screen font (Terminus 10x18), made from the firmware's bitmaps by
   `python3 tools/screen_fonts.py <NANO-FX-DR/src/ui>` and used only where the page shows what
   the device's screen says; keep it at 18 px so its pixels stay sharp. Terminus is under the
