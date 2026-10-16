@@ -13,7 +13,8 @@
         "performance-mixer",
         "vcv-random",
         "fum"
-      ]
+      ],
+      "accent": "#FAC300"
     }
   ],
   "products": {
@@ -140,5 +141,5 @@
       }
     }
   },
-  "page": "c63f8af669ca"
+  "page": "8a21d2dfb0d1"
 }

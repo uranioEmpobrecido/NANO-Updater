@@ -6,7 +6,7 @@
 <title>NANO Updater</title>
 <meta name="description" content="Update the firmware of your NANO Industries devices from the browser.">
 <style>
-  :root { --bg: #0b0d10; --panel: #13171c; --line: #232a32; --text: #e6e6e6; --dim: #8a9097; --cyan: #afdcfa; }
+  :root { --bg: #0b0d10; --panel: #13171c; --line: #232a32; --text: #e6e6e6; --dim: #8a9097; --accent: #afdcfa; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--text);
     font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -20,8 +20,8 @@
   .product { display: flex; justify-content: space-between; align-items: center; gap: 16px;
     background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px;
     color: inherit; text-decoration: none; }
-  a.product:hover, a.product:focus-visible { border-color: var(--cyan); outline: none; }
-  .name { font: 600 19px/1.2 ui-monospace, Menlo, monospace; color: var(--cyan); }
+  a.product:hover, a.product:focus-visible { border-color: var(--accent); outline: none; }
+  .name { font: 600 19px/1.2 ui-monospace, Menlo, monospace; color: var(--accent); }
   .what { color: var(--dim); font-size: 14px; margin-top: 3px; }
   .soon .name { color: var(--dim); }
   .go { color: var(--dim); font-size: 22px; }
@@ -47,6 +47,7 @@
   for (const g of cat.groups) {
     const h = document.createElement("h2"); h.textContent = g.name; list.appendChild(h);
     const ul = document.createElement("ul");
+    if (g.accent) ul.style.setProperty("--accent", g.accent);
     for (const slug of g.products) {
       const p = cat.products[slug]; if (!p) continue;
       const ready = p.bootloader && p.steps;
