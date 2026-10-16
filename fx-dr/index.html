@@ -170,11 +170,8 @@ const MSG = {
     prep: "Preparando…",
     erase: (i, n) => `Borrando ${i}/${n}…`,
     write: p => `Escribiendo… ${p} %`,
-    verify: p => `Comprobando… ${p} %`,
     reboot: "Reiniciando el pedal…",
     done: v => `Hecho. El pedal arranca ya con ${v}.`,
-    doneNoVerify: v => `Escrito (${v}), aunque no se pudo comprobar. Si el pedal no arranca bien, repite la actualización.`,
-    mismatch: a => `La comprobación falló en 0x${a.toString(16)}. Repite la actualización desde el paso 1.`,
     lost: "Se perdió la conexión con el pedal. Repite la actualización desde el paso 1.",
     badFile: r => `Ese archivo no es firmware del FX-DR: ${r}.`,
   },
@@ -192,11 +189,8 @@ const MSG = {
     prep: "Getting ready…",
     erase: (i, n) => `Erasing ${i}/${n}…`,
     write: p => `Writing… ${p} %`,
-    verify: p => `Checking… ${p} %`,
     reboot: "Restarting the pedal…",
     done: v => `Done. The pedal now starts with ${v}.`,
-    doneNoVerify: v => `Written (${v}), but it could not be checked. If the pedal does not start properly, run the update again.`,
-    mismatch: a => `The check failed at 0x${a.toString(16)}. Run the update again from step 1.`,
     lost: "The connection to the pedal was lost. Run the update again from step 1.",
     badFile: r => `That file is not FX-DR firmware: ${r}.`,
   },
@@ -310,18 +304,6 @@ class DfuSe {
       await this.settle();
       progress(Math.min(off + this.ts, bytes.length) / bytes.length);
     }
-  }
-  async read(addr, len, progress) {
-    await this.command(0x21, addr);
-    await this.idle();
-    const out = new Uint8Array(len);
-    for (let off = 0, block = 2; off < len; off += this.ts, block++) {
-      const d = await this.in(REQ.UPLOAD, block, Math.min(this.ts, len - off));
-      out.set(new Uint8Array(d.buffer, d.byteOffset, d.byteLength), off);
-      progress(Math.min(off + this.ts, len) / len);
-    }
-    await this.idle();
-    return out;
   }
   async leave(addr) {          // point at the app, then an empty download: the device runs it
     await this.command(0x21, addr);
@@ -512,21 +494,14 @@ $("flash").addEventListener("click", async () => {
   try {
     setBar(0); setPhase(t("prep"));
     await dfu.idle();
+    // No read-back check: the Daisy bootloader answers an upload with the app encoded, not as
+    // written (the same bytes whoever wrote it — dfu-util included). Every erase and every block
+    // is confirmed by the bootloader's own status instead, which is what dfu-util relies on.
     await dfu.erase(APP_ADDR, bytes.length, (i, n) => { setPhase(t("erase", i, n)); setBar(0.15 * i / n); });
-    await dfu.write(APP_ADDR, bytes, f => { setPhase(t("write", Math.round(f * 100))); setBar(0.15 + 0.6 * f); });
-    let verified = true;
-    try {
-      const back = await dfu.read(APP_ADDR, bytes.length, f => { setPhase(t("verify", Math.round(f * 100))); setBar(0.75 + 0.2 * f); });
-      for (let i = 0; i < bytes.length; i++) {
-        if (back[i] !== bytes[i]) { setPhase(t("mismatch", APP_ADDR + i), "err"); busy = false; refreshLabels(); return; }
-      }
-    } catch (e) {
-      verified = false;
-      try { await dfu.idle(); } catch (e2) {}
-    }
+    await dfu.write(APP_ADDR, bytes, f => { setPhase(t("write", Math.round(f * 100))); setBar(0.15 + 0.8 * f); });
     setPhase(t("reboot")); setBar(1);
     await dfu.leave(APP_ADDR);
-    setPhase(verified ? t("done", v) : t("doneNoVerify", v), verified ? "ok" : "warn");
+    setPhase(t("done", v), "ok");
     $("s3").classList.add("done");
   } catch (e) {
     setPhase(t("lost"), "err");
