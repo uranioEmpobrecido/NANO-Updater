@@ -63,8 +63,8 @@
       "maxSize": 1048576,
       "steps": {
         "mode": [
-          "With the ISO-F1 off, hold down BYPASS FILTER.",
-          "Power it on, still holding BYPASS FILTER: it starts in update mode."
+          "With the ISO-F1 off, hold down SHIFT.",
+          "Power it on, still holding SHIFT: it starts in update mode."
         ],
         "connect": "Connect the ISO-F1's USB straight to the computer, with no hub in between.",
         "exit": "To leave update mode without updating, power the ISO-F1 off and on."
