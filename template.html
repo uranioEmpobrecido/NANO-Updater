@@ -222,7 +222,6 @@ function parseLayout(name) {
   }
   return segs;
 }
-const normLayout = s => (s || "").replace(/\s+/g, "").toLowerCase();
 
 async function configDescriptor(dev) {
   const head = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0200, index: 0 }, 4);
@@ -280,8 +279,9 @@ let busy = false;
 // Is this DFU interface the one this product's firmware goes through?
 //   daisy:     the Daisy bootloader, whose memory map holds the app address; the chip's ROM
 //              bootloader is refused (writing internal flash would erase the Daisy bootloader).
-//   stm32-rom: the chip's own ROM bootloader, and the right chip: its memory map must be the
-//              one products.json gives, so another product's chip is never written.
+//   stm32-rom: the chip's own ROM bootloader, and the right chip: its memory map must match the
+//              product's layoutPattern, so a different chip is never written. (Two products on
+//              the same chip look alike over DFU; step 2 asks for this one alone.)
 function judge(name) {
   const rom = /^@Internal Flash/i.test(name);
   const segs = parseLayout(name);
@@ -294,7 +294,8 @@ function judge(name) {
   }
   if (P.bootloader === "stm32-rom") {
     if (!rom) return { why: `That device is not a ${P.name} in DFU mode.` };
-    if (!P.layout || normLayout(name) !== normLayout(P.layout)) return { why: `That chip is not the one in a ${P.name}.` };
+    const pat = P.layoutPattern ? new RegExp(P.layoutPattern, "i") : null;
+    if (!pat || !pat.test(name.replace(/\s+/g, " ").trim())) return { why: `That chip is not the one in a ${P.name}.` };
     if (!covers) return { why: `That device is not a ${P.name} in DFU mode.` };
     return { segs };
   }
@@ -353,7 +354,8 @@ async function start() {
     for (const s of P.steps.screen) { const d = document.createElement("div"); d.textContent = s; $("glass").appendChild(d); }
     $("glass").hidden = false;
   }
-  $("connectText").textContent = P.steps.connect || "";
+  $("connectText").textContent = (P.steps.connect || "") + (P.bootloader === "stm32-rom"
+    ? ` Connect only the ${P.name}: over DFU the browser cannot tell it from another device with the same chip.` : "");
   $("connect").textContent = `Find the ${P.name}`;
   $("s3text").textContent = `Do not unplug or power off the ${dev} until it finishes. It takes a few seconds.`;
   if (P.steps.exit) { const li = document.createElement("li"); li.textContent = P.steps.exit; $("helpList").appendChild(li); }
