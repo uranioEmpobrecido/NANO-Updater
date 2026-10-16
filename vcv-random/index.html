@@ -12,6 +12,7 @@
     --radius: 12px;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* .glass and .steps set their own display */
   html, body { margin: 0; background: var(--bg); color: var(--text);
     font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   main { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
@@ -112,7 +113,7 @@
 
 // This page's build, stamped by build.py. products.json (never cached) names the current one: a
 // copy the browser or the CDN kept from an older publish reloads itself as the new one.
-const PAGE_ID = "efd5d24786de";
+const PAGE_ID = "dfba4b3b2ca6";
 
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
