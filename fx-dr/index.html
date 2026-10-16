@@ -349,6 +349,40 @@ function parseLayout(name) {
   return segs;
 }
 
+// The configuration descriptor, whole.
+async function configDescriptor(dev) {
+  const head = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0200, index: 0 }, 4);
+  const total = head.data.getUint16(2, true);
+  const r = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0200, index: 0 }, total);
+  return r.data;
+}
+async function stringDescriptor(dev, index, langid) {
+  const r = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0300 | index, index: langid }, 255);
+  const d = r.data;
+  let s = "";
+  for (let i = 2; i + 1 < Math.min(d.getUint8(0), d.byteLength); i += 2) s += String.fromCharCode(d.getUint16(i, true));
+  return s;
+}
+// Each DFU alternate's name ("@Flash /0x90000000/..."), read from the device itself. Chrome's
+// alt.interfaceName is often empty (macOS especially), and the name is the memory map we need.
+// Returns { "intf/alt": name }.
+async function interfaceNames(dev) {
+  const names = {};
+  try {
+    const d = await configDescriptor(dev);
+    const lang = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0300, index: 0 }, 255);
+    const langid = lang.data.byteLength >= 4 ? lang.data.getUint16(2, true) : 0x0409;
+    for (let i = 0; i + 1 < d.byteLength;) {
+      const len = d.getUint8(i), type = d.getUint8(i + 1);
+      if (len === 0) break;
+      if (type === 0x04 && len >= 9 && d.getUint8(i + 8) !== 0)   // interface: number, alternate, iInterface
+        names[`${d.getUint8(i + 2)}/${d.getUint8(i + 3)}`] = await stringDescriptor(dev, d.getUint8(i + 8), langid);
+      i += len;
+    }
+  } catch (e) {}
+  return names;
+}
+
 // wTransferSize from the DFU functional descriptor (type 0x21) in the configuration descriptor.
 async function transferSize(dev) {
   try {
@@ -434,10 +468,16 @@ $("connect").addEventListener("click", async () => {
     if (!device.configuration) await device.selectConfiguration(1);
     // The DFU interface and, among its alternates, the one whose memory holds the app.
     let pick = null;
+    let names = null, seen = [];
     for (const intf of device.configuration.interfaces) {
       for (const alt of intf.alternates) {
         if (alt.interfaceClass !== 0xfe || alt.interfaceSubclass !== 0x01) continue;
-        const name = alt.interfaceName || "";
+        let name = alt.interfaceName || "";
+        if (!name) {
+          if (!names) names = await interfaceNames(device);
+          name = names[`${intf.interfaceNumber}/${alt.alternateSetting}`] || "";
+        }
+        seen.push(name || "?");
         if (/^@Internal Flash/i.test(name)) { pick = { rom: true }; continue; }
         const segs = parseLayout(name);
         if (segs.some(s => APP_ADDR >= s.start && APP_ADDR < s.end))
@@ -446,7 +486,9 @@ $("connect").addEventListener("click", async () => {
     }
     if (!pick || pick.rom) {
       await device.close();
-      setStatus($("connStatus"), t(pick && pick.rom ? "rom" : "unknown"), "err");
+      // What was there, for whoever has to work out why: the DFU memory map(s) the device reported.
+      const what = `${device.productName || "?"} [${seen.join(" | ") || "no DFU interface"}]`;
+      setStatus($("connStatus"), `${t(pick && pick.rom ? "rom" : "unknown")} (${what})`, "err");
       return;
     }
     await device.claimInterface(pick.intf);
