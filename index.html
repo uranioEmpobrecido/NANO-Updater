@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NANO Updater</title>
+<meta name="description" content="Actualiza el firmware de tus aparatos NANO Industries desde el navegador.">
+<style>
+  :root { --bg: #0b0d10; --panel: #13171c; --line: #232a32; --text: #e6e6e6; --dim: #8a9097; --cyan: #afdcfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
+  .brand { font: 600 13px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .12em; color: var(--dim); }
+  h1 { font-size: 32px; line-height: 1.15; margin: 28px 0 6px; }
+  .lead { color: var(--dim); margin: 0 0 28px; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+  a.product { display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px;
+    color: inherit; text-decoration: none; }
+  a.product:hover, a.product:focus-visible { border-color: var(--cyan); outline: none; }
+  .name { font: 600 20px/1.2 ui-monospace, Menlo, monospace; color: var(--cyan); }
+  .what { color: var(--dim); font-size: 14px; margin-top: 4px; }
+  .go { color: var(--dim); font-size: 22px; }
+  footer { margin-top: 32px; color: var(--dim); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">NANO INDUSTRIES</div>
+  <h1>Updater</h1>
+  <p class="lead">Elige tu aparato para actualizar su firmware desde el navegador (Chrome o Edge).<br>
+    Choose your device to update its firmware from the browser (Chrome or Edge).</p>
+  <ul>
+    <li><a class="product" href="fx-dr/">
+      <div><div class="name">FX-DR</div><div class="what">Delay + reverb</div></div>
+      <span class="go" aria-hidden="true">→</span>
+    </a></li>
+  </ul>
+  <footer>NANO Industries · Valencia, SPAIN</footer>
+</main>
+</body>
+</html>
