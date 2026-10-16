@@ -20,7 +20,7 @@
   "products": {
     "fx-dr2": {
       "name": "FX-DR2",
-      "description": "Delay & reverb for DJs",
+      "description": "Work in progress",
       "device": "pedal",
       "bootloader": "daisy",
       "address": "0x90040000",
@@ -145,5 +145,5 @@
       }
     }
   },
-  "page": "8ec8c5549c5e"
+  "page": "1ddbf00a0464"
 }
