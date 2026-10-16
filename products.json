@@ -20,7 +20,7 @@
   "products": {
     "fx-dr2": {
       "name": "FX-DR2",
-      "description": "Delay and reverb for the DJ booth. Repeats locked to the track's tempo, reverbs with character, a filter and Freeze, all on one screen.",
+      "description": "Delay & reverb for DJs",
       "device": "pedal",
       "bootloader": "daisy",
       "address": "0x90040000",
@@ -50,7 +50,7 @@
     },
     "iso-f1": {
       "name": "ISO-F1",
-      "description": "A fully analog 3-band isolator and DJ-style filter in one compact stereo unit.",
+      "description": "Analog isolator & DJ filter",
       "device": "unit",
       "chip": "STM32F405",
       "bootloader": "stm32-rom",
@@ -74,7 +74,7 @@
     },
     "performance-mixer": {
       "name": "Performance Mixer",
-      "description": "Central mixing hub for your modular setup. Knob recording (REC) captures your volume, pan and aux moves.",
+      "description": "Mixer with knob recording",
       "device": "module",
       "chip": "STM32F405",
       "bootloader": "stm32-rom",
@@ -98,7 +98,7 @@
     },
     "vcv-random": {
       "name": "VCV Random",
-      "description": "Random CV generator with 4 types of randomness, a triggerable sample-and-hold and self-modulation.",
+      "description": "Random CV generator",
       "device": "module",
       "chip": "STM32F303",
       "bootloader": "stm32-rom",
@@ -122,7 +122,7 @@
     },
     "fum": {
       "name": "FUM",
-      "description": "Six stereo effects, direct control: Delay, Reverb, Pitch, Chorus/Flanger, Texture and a Color filter, each on one bipolar knob.",
+      "description": "Stereo multi-effects",
       "device": "module",
       "chip": "STM32H750 (Daisy)",
       "bootloader": "stm32-rom",
@@ -145,5 +145,5 @@
       }
     }
   },
-  "page": "508f370f29be"
+  "page": "8ec8c5549c5e"
 }

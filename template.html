@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NANO Updater</title>
 <meta name="description" content="Update the firmware of your NANO Industries device from the browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap">
 <style>
-  /* The look of our products' screens: their own bitmap fonts (fonts/, built from the firmware by
-     tools/screen_fonts.py), black glass, inverted chips, rails, page dashes. Every font size is a
-     whole multiple of its cell (18/14 px, NANO Big 8 px) and every line height differs from it by
-     an even number, so each font pixel lands on whole CSS pixels and stays sharp. */
+  /* The look of our products' screens: black glass, inverted chips, rails, page dashes, in
+     JetBrains Mono. The device's own screen (.glass) is drawn in its own bitmap font, "NANO
+     Screen" (fonts/, built from the firmware by tools/screen_fonts.py), at 18 px so each of its
+     pixels is a whole CSS pixel. */
   @font-face { font-family: "NANO Screen"; src: url(../fonts/nano-screen-18.ttf) format("truetype"); font-display: block; }
   @font-face { font-family: "NANO Screen"; font-weight: 700; src: url(../fonts/nano-screen-18-bold.ttf) format("truetype"); font-display: block; }
-  @font-face { font-family: "NANO Screen Small"; src: url(../fonts/nano-screen-14.ttf) format("truetype"); font-display: block; }
-  @font-face { font-family: "NANO Screen Small"; font-weight: 700; src: url(../fonts/nano-screen-14-bold.ttf) format("truetype"); font-display: block; }
-  @font-face { font-family: "NANO Big"; src: url(../fonts/nano-big.ttf) format("truetype"); font-display: block; }
   :root {
     /* theme.h */
     --bg: #000; --bezel: #1c2127; --white: #e6e6e6; --gray: #b2b2b2; --dim: #878787;
@@ -24,19 +24,19 @@
     --accent-fill: color-mix(in srgb, var(--accent) 68%, #000);         /* rail fill */
     --accent-rule: color-mix(in srgb, var(--accent) 56%, #000);         /* section rules */
     --accent-ghost: color-mix(in srgb, var(--accent) 34%, #000);
-    --mono: "NANO Screen", ui-monospace, Menlo, monospace;
-    --small: "NANO Screen Small", ui-monospace, Menlo, monospace;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }   /* .glass and .steps set their own display */
   html, body { margin: 0; background: var(--bg); color: var(--white); }
-  body { font: 18px/28px var(--mono); -webkit-font-smoothing: none; font-smooth: never; }
+  body { font: 16px/26px var(--mono); }
   main { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
   a { color: inherit; }
   :focus-visible { outline: 2px dashed var(--accent); outline-offset: 2px; }
 
   /* the screens' header: "SETTINGS FILTER", page dashes, a rule */
   .bar-top { display: flex; align-items: center; gap: 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent-rule); }
+  .bar-top { font-size: 14px; letter-spacing: .08em; }
   .bar-top .where { color: var(--dim); text-decoration: none; text-transform: uppercase; }
   .bar-top .where:hover { color: var(--white); }
   .bar-top .what { font-weight: 700; text-transform: uppercase; }
@@ -45,17 +45,17 @@
   .dashes i.done { background: var(--accent-ghost); }
   .dashes i.now { background: var(--accent); }
 
-  h1 { font: 40px/48px "NANO Big", var(--mono); color: var(--accent); margin: 28px 0 8px; font-weight: 400;
+  h1 { font: 800 40px/48px var(--mono); letter-spacing: -.02em; color: var(--accent); margin: 28px 0 8px;
     text-transform: uppercase; overflow-wrap: anywhere; }
   .lead { color: var(--gray); margin: 0 0 4px; }
-  .fw { font: 14px/20px var(--small); color: var(--dim); margin: 0 0 24px; }
+  .fw { font-size: 13px; line-height: 20px; color: var(--dim); margin: 0 0 24px; }
 
   .notice { border: 2px solid var(--amber); color: var(--amber); padding: 12px 14px; margin-bottom: 18px; }
 
   /* each step is a screen of its own */
   ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
   .step { background: #000; border: 4px solid var(--bezel); border-radius: 14px; padding: 12px 16px 18px; }
-  .step h2 { font: 700 18px/28px var(--mono); margin: 0 0 10px; padding-bottom: 6px; display: flex; gap: 12px;
+  .step h2 { font: 700 15px/26px var(--mono); letter-spacing: .06em; margin: 0 0 10px; padding-bottom: 6px; display: flex; gap: 12px;
     border-bottom: 2px solid var(--accent-ghost); text-transform: uppercase; }
   .step h2 .num { color: var(--dim); font-weight: 400; white-space: nowrap; flex: none; }
   .step h2 .num::before { content: "STEP "; }
@@ -68,17 +68,19 @@
 
   /* the update-mode screen, as the device shows it */
   .glass { margin: 14px auto 4px; width: min(100%, 320px); aspect-ratio: 320 / 172; background: #000;
-    border-radius: 14px; border: 6px solid var(--bezel); display: grid; place-content: center; text-align: center; color: var(--white); }
+    border-radius: 14px; border: 6px solid var(--bezel); display: grid; place-content: center; text-align: center; color: var(--white);
+    font: 18px/28px "NANO Screen", var(--mono); -webkit-font-smoothing: none; }
   .glass div:first-child { color: var(--accent); font-weight: 700; }
   .glass div:last-child:not(:first-child) { color: var(--dim); }
 
   /* options, as on the SETTINGS pages: the chosen one is an inverted chip */
   .choices { display: grid; margin-top: 10px; }
-  .choice { display: flex; gap: 12px; align-items: center; padding: 4px 8px; cursor: pointer; text-transform: uppercase;
+  .choice { display: flex; gap: 12px; align-items: center; padding: 6px 8px; cursor: pointer; text-transform: uppercase;
+    font-size: 15px; letter-spacing: .04em;
     border-bottom: 2px solid var(--line); }
   .choice:last-child { border-bottom: 0; }
   .choice input { position: absolute; opacity: 0; pointer-events: none; }
-  .choice small { margin-left: auto; color: var(--dim); font: inherit; }
+  .choice small { margin-left: auto; color: var(--dim); font: inherit; white-space: nowrap; flex: none; }
   .choice:hover { color: var(--accent); }
   .choice:has(input:checked) { background: var(--accent); color: #000; }
   .choice:has(input:checked) small { color: #000; }
@@ -86,7 +88,7 @@
 
   /* buttons are chips too */
   button.primary { appearance: none; border: 0; border-radius: 0; background: var(--accent); color: #000;
-    font: 700 18px/28px var(--mono); text-transform: uppercase; padding: 6px 16px; cursor: pointer; }
+    font: 700 15px/26px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 8px 18px; cursor: pointer; }
   button.primary:hover:not(:disabled) { background: var(--white); }
   button.primary:disabled { background: var(--rail); color: var(--dim); cursor: default; }
   .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 14px; }
@@ -95,22 +97,22 @@
 
   /* progress: a label, the big number, a rail */
   .meter { display: flex; align-items: flex-end; gap: 12px; margin-top: 16px; }
-  .phase { color: var(--gray); text-transform: uppercase; flex: 1; min-height: 28px; }
-  .pct { font: 40px/48px "NANO Big", var(--mono); color: var(--accent); }
+  .phase { color: var(--gray); text-transform: uppercase; letter-spacing: .06em; font-size: 14px; flex: 1; min-height: 26px; }
+  .pct { font: 800 40px/48px var(--mono); letter-spacing: -.02em; color: var(--accent); }
   .rail { height: 8px; background: var(--rail); margin-top: 6px; }
   .rail > div { height: 100%; width: 0; background: var(--accent-fill); border-right: 2px solid var(--accent); transition: width .15s; }
 
   details { margin-top: 24px; color: var(--dim); }
-  details summary { cursor: pointer; list-style: none; text-transform: uppercase; }
+  details summary { cursor: pointer; list-style: none; text-transform: uppercase; font-size: 14px; letter-spacing: .06em; }
   details summary::-webkit-details-marker { display: none; }
   details summary::before { content: "+ "; color: var(--accent); }
   details[open] summary::before { content: "- "; }
-  details p, details li { font: 14px/20px var(--small); margin: 8px 0; }
-  code { font: 14px/20px var(--small); background: var(--rail); padding: 0 4px; color: var(--white); overflow-wrap: anywhere; }
-  input[type=file] { color: var(--dim); font: 14px/20px var(--small); }
-  footer { margin-top: 36px; color: var(--dim); text-align: center; text-transform: uppercase; }
+  details p, details li { font-size: 14px; line-height: 22px; margin: 8px 0; }
+  code { font: 13px/20px var(--mono); background: var(--rail); padding: 0 4px; color: var(--white); overflow-wrap: anywhere; }
+  input[type=file] { color: var(--dim); font: 14px/22px var(--mono); }
+  footer { margin-top: 36px; color: var(--dim); text-align: center; text-transform: uppercase; font-size: 13px; letter-spacing: .08em; }
   @media (max-width: 420px) {
-    h1, .pct { font-size: 32px; line-height: 40px; }
+    h1, .pct { font-size: 30px; line-height: 38px; }
     .dashes i { width: 14px; }
   }
 </style>

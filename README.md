@@ -19,11 +19,11 @@ https://uranioempobrecido.github.io/NANO-Updater/
     file's date). `python3 release.py` copies them here, checks each one against its product
     and writes its `firmware.json`; `python3 release.py fum` does one product.
 
-- `fonts/`: the look of our products' screens. Web fonts made from the firmware's own bitmap
-  fonts (Terminus 10x18 and 8x14 as "NANO Screen", the 5x7 of the big numbers as "NANO Big") by
-  `python3 tools/screen_fonts.py <NANO-FX-DR/src/ui>`; Terminus is under the SIL OFL
-  (`fonts/OFL.txt`). Keep each font at a whole multiple of its cell (18 px, 14 px, 8 px) and
-  each line height an even number of pixels away, or the pixels blur. A group's `accent` in
-  `products.json` colours its products (NANO Modules: the yellow of its panels).
+- Type: JetBrains Mono (Google Fonts), the brand's choice. `fonts/` holds "NANO Screen", the
+  FX-DR2's own screen font (Terminus 10x18), made from the firmware's bitmaps by
+  `python3 tools/screen_fonts.py <NANO-FX-DR/src/ui>` and used only where the page shows what
+  the device's screen says; keep it at 18 px so its pixels stay sharp. Terminus is under the
+  SIL OFL (`fonts/OFL.txt`). A group's `accent` in `products.json` colours its products (NANO
+  Modules: the yellow of its panels).
 
 After editing `products.json` or `template.html`, run `python3 build.py`, then commit and push.
