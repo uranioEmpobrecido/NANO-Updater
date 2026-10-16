@@ -1,6 +1,7 @@
 {
   "product": "FX-DR2",
   "version": "1.1",
+  "date": "2026-10-16",
   "file": "firmware/fx-dr2-1.1.bin",
   "size": 131316,
   "sha256": "5199e62006d1185e9a1800872eaa55f1a8dbda3f8aa5b7c1a634c879ba68b82e",

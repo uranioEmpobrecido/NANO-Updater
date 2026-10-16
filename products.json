@@ -20,7 +20,7 @@
   "products": {
     "fx-dr2": {
       "name": "FX-DR2",
-      "tagline": "Delay + reverb",
+      "description": "Delay and reverb for the DJ booth. Repeats locked to the track's tempo, reverbs with character, a filter and Freeze, all on one screen.",
       "device": "pedal",
       "bootloader": "daisy",
       "address": "0x90040000",
@@ -50,6 +50,7 @@
     },
     "iso-f1": {
       "name": "ISO-F1",
+      "description": "A fully analog 3-band isolator and DJ-style filter in one compact stereo unit.",
       "device": "unit",
       "chip": "STM32F405",
       "bootloader": "stm32-rom",
@@ -73,6 +74,7 @@
     },
     "performance-mixer": {
       "name": "Performance Mixer",
+      "description": "Central mixing hub for your modular setup. Knob recording (REC) captures your volume, pan and aux moves.",
       "device": "module",
       "chip": "STM32F405",
       "bootloader": "stm32-rom",
@@ -96,6 +98,7 @@
     },
     "vcv-random": {
       "name": "VCV Random",
+      "description": "Random CV generator with 4 types of randomness, a triggerable sample-and-hold and self-modulation.",
       "device": "module",
       "chip": "STM32F303",
       "bootloader": "stm32-rom",
@@ -119,6 +122,7 @@
     },
     "fum": {
       "name": "FUM",
+      "description": "Six stereo effects, direct control: Delay, Reverb, Pitch, Chorus/Flanger, Texture and a Color filter, each on one bipolar knob.",
       "device": "module",
       "chip": "STM32H750 (Daisy)",
       "bootloader": "stm32-rom",
@@ -141,5 +145,5 @@
       }
     }
   },
-  "page": "74396aca4b1a"
+  "page": "508f370f29be"
 }

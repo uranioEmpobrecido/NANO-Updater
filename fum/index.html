@@ -188,7 +188,7 @@
 
 // This page's build, stamped by build.py. products.json (never cached) names the current one: a
 // copy the browser or the CDN kept from an older publish reloads itself as the new one.
-const PAGE_ID = "74396aca4b1a";
+const PAGE_ID = "508f370f29be";
 
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -419,6 +419,9 @@ function numberSteps() {
 }
 const modeStep = () => $("s1").querySelector(".num").textContent;
 
+// When a build was made: its "date", or the day it was published.
+const buildDate = b => b.date || (b.built || "").slice(0, 10);
+
 // A published build, fetched and checked against its firmware.json entry and this product.
 async function loadBuild(b, named) {
   const buf = await (await fetch(b.file, { cache: "no-store" })).arrayBuffer();
@@ -426,11 +429,12 @@ async function loadBuild(b, named) {
     .map(x => x.toString(16).padStart(2, "0")).join("");
   if (sum !== b.sha256 || buf.byteLength !== b.size) throw new Error("checksum");
   if (checkFirmware(buf)) throw new Error("vector");
-  const tag = b.version ? `v${b.version}` : `the ${b.date} build`;
+  const date = buildDate(b);
+  const tag = b.version ? `v${b.version}` : `the ${date} build`;
   const kb = `${Math.round(buf.byteLength / 1024)} KB`;
   return {
     bytes: new Uint8Array(buf), button: `Update to ${tag}`,
-    label: (named ? `${b.name} · ` : "") + `Firmware ${b.version ? tag : "of " + b.date} · ${kb}`,
+    label: (named ? `${b.name} · ` : "") + `Firmware ${b.version ? tag : ""}${date ? (b.version ? " of " : "of ") + date : ""} · ${kb}`,
     done: named ? `Done. It now runs the ${b.name} firmware, ${tag}.` : `Done. The ${P.name} now runs ${tag}.`,
   };
 }
@@ -498,7 +502,7 @@ async function start() {
         radio.type = "radio"; radio.name = "variant";
         radio.addEventListener("change", () => chooseBuild(b));
         name.textContent = b.name;
-        what.textContent = b.version ? `v${b.version}` : b.date;
+        what.textContent = b.version ? `v${b.version}` + (buildDate(b) ? ` · ${buildDate(b)}` : "") : buildDate(b);
         row.append(radio, name, what);
         $("variants").appendChild(row);
       }
