@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NANO Updater</title>
+<meta name="description" content="Update the firmware of your NANO Industries device from the browser.">
+<style>
+  :root {
+    --bg: #0b0d10; --panel: #13171c; --line: #232a32; --text: #e6e6e6; --dim: #8a9097;
+    --cyan: #afdcfa; --cyan-ink: #0b0d10; --ok: #7ee0a1; --warn: #ffb35c; --err: #ff6b6b;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
+  .brand { font: 600 13px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .12em; color: var(--dim);
+    text-decoration: none; }
+  .brand:hover { color: var(--text); }
+  h1 { font-size: 32px; line-height: 1.15; margin: 28px 0 6px; }
+  h1 span { color: var(--cyan); }
+  .lead { color: var(--dim); margin: 0 0 28px; }
+  .fw { font: 13px ui-monospace, Menlo, monospace; color: var(--dim); }
+  ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 20px; }
+  .step h2 { font-size: 15px; margin: 0 0 8px; display: flex; gap: 10px; align-items: center; }
+  .num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--line); color: var(--text); font: 600 13px ui-monospace, Menlo, monospace; flex: none; }
+  .step.done .num { background: var(--ok); color: var(--cyan-ink); }
+  .step p, .step li { color: #c9cdd2; margin: 6px 0; }
+  .step ul { margin: 6px 0 0; padding-left: 20px; }
+  .glass { margin: 14px auto 4px; width: min(100%, 320px); aspect-ratio: 320 / 172; background: #000;
+    border-radius: 14px; border: 6px solid #1c2127; display: grid; place-content: center; text-align: center;
+    font: 600 15px/1.6 ui-monospace, Menlo, monospace; color: #fff; }
+  .glass div:first-child { color: var(--cyan); font-size: 18px; letter-spacing: .04em; }
+  .glass div:last-child:not(:first-child) { color: #888; font-size: 12px; }
+  button.primary { appearance: none; border: 0; border-radius: 10px; background: var(--cyan); color: var(--cyan-ink);
+    font: 600 16px system-ui, sans-serif; padding: 12px 18px; cursor: pointer; min-width: 200px; }
+  button.primary:disabled { opacity: .35; cursor: default; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
+  .status { font-size: 14px; color: var(--dim); }
+  .status.ok { color: var(--ok); } .status.warn { color: var(--warn); } .status.err { color: var(--err); }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 14px; }
+  .bar > div { height: 100%; width: 0; background: var(--cyan); transition: width .15s; }
+  .phase { font: 13px ui-monospace, Menlo, monospace; color: var(--dim); margin-top: 8px; min-height: 1.5em; }
+  .notice { border: 1px solid var(--warn); color: var(--warn); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 18px; }
+  details { margin-top: 28px; color: var(--dim); }
+  details summary { cursor: pointer; }
+  details p, details li { font-size: 14px; }
+  code { font: 13px ui-monospace, Menlo, monospace; background: var(--line); padding: 1px 5px; border-radius: 4px; color: var(--text); }
+  input[type=file] { color: var(--dim); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="../">NANO INDUSTRIES · UPDATER</a>
+
+  <h1><span id="pname">…</span> Updater</h1>
+  <p class="lead" id="lead"></p>
+  <p class="fw" id="fw">Loading…</p>
+
+  <div class="notice" id="nousb" hidden>
+    This browser cannot talk to USB devices. Open this page in Chrome or Edge, on a computer.
+  </div>
+  <div class="notice" id="unavailable" hidden></div>
+
+  <ol class="steps" id="steps" hidden>
+    <li class="step" id="s1">
+      <h2><span class="num">1</span><span id="s1h"></span></h2>
+      <ul id="modeSteps"></ul>
+      <div class="glass" id="glass" aria-hidden="true" hidden></div>
+    </li>
+    <li class="step" id="s2">
+      <h2><span class="num">2</span><span>Connect it and find it</span></h2>
+      <p><span id="connectText"></span> Then press the button and pick the device in the list.</p>
+      <div class="row">
+        <button class="primary" id="connect"></button>
+        <span class="status" id="connStatus"></span>
+      </div>
+    </li>
+    <li class="step" id="s3">
+      <h2><span class="num">3</span><span>Update</span></h2>
+      <p id="s3text"></p>
+      <div class="row">
+        <button class="primary" id="flash" disabled>Update</button>
+      </div>
+      <div class="bar" aria-hidden="true"><div id="bar"></div></div>
+      <div class="phase" id="phase" role="status" aria-live="polite"></div>
+    </li>
+  </ol>
+
+  <details id="help" hidden>
+    <summary>If something goes wrong</summary>
+    <ul id="helpList">
+      <li>The list is empty: check that the device is in update mode and that the cable goes straight to the computer, not through a hub. Try another cable: some only charge.</li>
+      <li>Windows: the first time you may need to install the WinUSB driver for the device (VID 0483, PID DF11) with Zadig (zadig.akeo.ie).</li>
+      <li>Linux: give the device permission with a udev rule: <code>SUBSYSTEMS=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="df11", MODE="0666"</code></li>
+      <li>If an update is interrupted, nothing is lost: go back to step 1 and run it again.</li>
+    </ul>
+  </details>
+
+  <details id="adv" hidden>
+    <summary>Advanced: flash another file</summary>
+    <p>Only if NANO Industries sent you a .bin file for this device. It is checked before flashing.</p>
+    <input type="file" id="file" accept=".bin,application/octet-stream">
+  </details>
+</main>
+
+<script>
+"use strict";
+
+// This page's build, stamped by build.py. products.json (never cached) names the current one: a
+// copy the browser or the CDN kept from an older publish reloads itself as the new one.
+const PAGE_ID = "__PAGE_ID__";
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const hex = s => (typeof s === "number" ? s : parseInt(s, 16));
+
+// ---------------------------------------------------------------------------------------------
+// DfuSe over WebUSB: the protocol dfu-util speaks to STM32 DFU devices (the chip's own ROM
+// bootloader, and the Daisy bootloader).
+// ---------------------------------------------------------------------------------------------
+const REQ = { DNLOAD: 1, UPLOAD: 2, GETSTATUS: 3, CLRSTATUS: 4, ABORT: 6 };
+const STATE = { dfuIDLE: 2, dfuDNBUSY: 4, dfuERROR: 10 };
+
+class DfuSe {
+  constructor(device, intf, segments, transferSize) {
+    this.dev = device; this.intf = intf; this.segments = segments; this.ts = transferSize;
+  }
+  async out(request, value, data) {
+    const r = await this.dev.controlTransferOut(
+      { requestType: "class", recipient: "interface", request, value, index: this.intf }, data);
+    if (r.status !== "ok") throw new Error(`DFU request ${request}: ${r.status}`);
+  }
+  async in(request, value, length) {
+    const r = await this.dev.controlTransferIn(
+      { requestType: "class", recipient: "interface", request, value, index: this.intf }, length);
+    if (r.status !== "ok") throw new Error(`DFU request ${request}: ${r.status}`);
+    return r.data;
+  }
+  async status() {
+    const d = await this.in(REQ.GETSTATUS, 0, 6);
+    return { status: d.getUint8(0), poll: d.getUint8(1) | (d.getUint8(2) << 8) | (d.getUint8(3) << 16), state: d.getUint8(4) };
+  }
+  async idle() {               // from wherever the device was left, back to dfuIDLE
+    let s = await this.status();
+    if (s.state === STATE.dfuERROR) { await this.out(REQ.CLRSTATUS, 0); s = await this.status(); }
+    if (s.state !== STATE.dfuIDLE) { await this.out(REQ.ABORT, 0); s = await this.status(); }
+    if (s.state !== STATE.dfuIDLE) throw new Error(`DFU state ${s.state}`);
+  }
+  async settle() {             // a download is carried out on GETSTATUS: poll until it is done
+    for (;;) {
+      const s = await this.status();
+      if (s.status !== 0) throw new Error(`DFU status ${s.status}`);
+      if (s.state === STATE.dfuDNBUSY) { await sleep(Math.max(s.poll, 2)); continue; }
+      return s;
+    }
+  }
+  async command(op, addr) {    // DfuSe special commands: 0x21 set address, 0x41 erase sector
+    const b = new Uint8Array([op, addr & 0xff, (addr >>> 8) & 0xff, (addr >>> 16) & 0xff, (addr >>> 24) & 0xff]);
+    await this.out(REQ.DNLOAD, 0, b);
+    await this.settle();
+  }
+  sectorsFor(addr, len) {      // the erasable sectors that cover [addr, addr + len)
+    const out = [];
+    for (let a = addr; a < addr + len;) {
+      const seg = this.segments.find(s => a >= s.start && a < s.end);
+      if (!seg) throw new Error(`no memory at 0x${a.toString(16)}`);
+      const sector = seg.start + Math.floor((a - seg.start) / seg.size) * seg.size;
+      out.push(sector);
+      a = sector + seg.size;
+    }
+    return out;
+  }
+  async erase(addr, len, progress) {
+    const sectors = this.sectorsFor(addr, len);
+    for (let i = 0; i < sectors.length; i++) { progress(i + 1, sectors.length); await this.command(0x41, sectors[i]); }
+  }
+  async write(addr, bytes, progress) {
+    for (let off = 0; off < bytes.length; off += this.ts) {
+      await this.command(0x21, addr + off);
+      await this.out(REQ.DNLOAD, 2, bytes.subarray(off, Math.min(off + this.ts, bytes.length)));
+      await this.settle();
+      progress(Math.min(off + this.ts, bytes.length) / bytes.length);
+    }
+  }
+  async read(addr, len, progress) {   // the ROM bootloader reads back what it holds
+    await this.command(0x21, addr);
+    await this.idle();
+    const out = new Uint8Array(len);
+    for (let off = 0, block = 2; off < len; off += this.ts, block++) {
+      const d = await this.in(REQ.UPLOAD, block, Math.min(this.ts, len - off));
+      out.set(new Uint8Array(d.buffer, d.byteOffset, d.byteLength), off);
+      progress(Math.min(off + this.ts, len) / len);
+    }
+    await this.idle();
+    return out;
+  }
+  async leave(addr) {          // point at the app, then an empty download: the device runs it
+    await this.command(0x21, addr);
+    await this.out(REQ.DNLOAD, 0, new Uint8Array(0));
+    try { await this.status(); } catch (e) { /* it is already gone, as it should be */ }
+  }
+}
+
+// "@Flash /0x90000000/64*4Kg/0x90040000/60*64Kg/..." -> [{start, end, size}]
+function parseLayout(name) {
+  const parts = name.split("/").map(s => s.trim());
+  const segs = [];
+  for (let i = 1; i + 1 < parts.length; i += 2) {
+    let a = parseInt(parts[i], 16);
+    for (const g of parts[i + 1].split(",")) {
+      const m = /^(\d+)\*(\d+)([BKM ]?)(.)$/.exec(g.trim());
+      if (!m) continue;
+      const mult = m[3] === "K" ? 1024 : m[3] === "M" ? 1048576 : 1;
+      const size = parseInt(m[2], 10) * mult, count = parseInt(m[1], 10);
+      segs.push({ start: a, end: a + size * count, size });
+      a += size * count;
+    }
+  }
+  return segs;
+}
+const normLayout = s => (s || "").replace(/\s+/g, "").toLowerCase();
+
+async function configDescriptor(dev) {
+  const head = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0200, index: 0 }, 4);
+  const total = head.data.getUint16(2, true);
+  const r = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0200, index: 0 }, total);
+  return r.data;
+}
+async function stringDescriptor(dev, index, langid) {
+  const r = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0300 | index, index: langid }, 255);
+  const d = r.data;
+  let s = "";
+  for (let i = 2; i + 1 < Math.min(d.getUint8(0), d.byteLength); i += 2) s += String.fromCharCode(d.getUint16(i, true));
+  return s;
+}
+// Each DFU alternate's name ("@Flash /0x90000000/..."), read from the device itself: Chrome's
+// alt.interfaceName is often empty (macOS especially), and that name is the memory map.
+async function interfaceNames(dev) {
+  const names = {};
+  try {
+    const d = await configDescriptor(dev);
+    const lang = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0300, index: 0 }, 255);
+    const langid = lang.data.byteLength >= 4 ? lang.data.getUint16(2, true) : 0x0409;
+    for (let i = 0; i + 1 < d.byteLength;) {
+      const len = d.getUint8(i), type = d.getUint8(i + 1);
+      if (len === 0) break;
+      if (type === 0x04 && len >= 9 && d.getUint8(i + 8) !== 0)
+        names[`${d.getUint8(i + 2)}/${d.getUint8(i + 3)}`] = await stringDescriptor(dev, d.getUint8(i + 8), langid);
+      i += len;
+    }
+  } catch (e) {}
+  return names;
+}
+// wTransferSize from the DFU functional descriptor (type 0x21).
+async function transferSize(dev) {
+  try {
+    const d = await configDescriptor(dev);
+    for (let i = 0; i + 1 < d.byteLength;) {
+      const len = d.getUint8(i), type = d.getUint8(i + 1);
+      if (len === 0) break;
+      if (type === 0x21 && len >= 7) return d.getUint16(i + 5, true);
+      i += len;
+    }
+  } catch (e) {}
+  return 1024;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The product (products.json, by this page's folder) and what it accepts
+// ---------------------------------------------------------------------------------------------
+let P = null, slug = "";
+let firmware = null;   // { bytes, version, label }
+let dfu = null;
+let busy = false;
+
+// Is this DFU interface the one this product's firmware goes through?
+//   daisy:     the Daisy bootloader, whose memory map holds the app address; the chip's ROM
+//              bootloader is refused (writing internal flash would erase the Daisy bootloader).
+//   stm32-rom: the chip's own ROM bootloader, and the right chip: its memory map must be the
+//              one products.json gives, so another product's chip is never written.
+function judge(name) {
+  const rom = /^@Internal Flash/i.test(name);
+  const segs = parseLayout(name);
+  const addr = hex(P.address);
+  const covers = segs.some(s => addr >= s.start && addr < s.end);
+  if (P.bootloader === "daisy") {
+    if (rom) return { why: P.steps && P.steps.wrongPort ? `That is the chip's built-in bootloader, not this device's update mode. ${P.steps.wrongPort}` : "That is the chip's built-in bootloader, not this device's update mode." };
+    if (!covers) return { why: `That device is not a ${P.name} in update mode.` };
+    return { segs };
+  }
+  if (P.bootloader === "stm32-rom") {
+    if (!rom) return { why: `That device is not a ${P.name} in DFU mode.` };
+    if (!P.layout || normLayout(name) !== normLayout(P.layout)) return { why: `That chip is not the one in a ${P.name}.` };
+    if (!covers) return { why: `That device is not a ${P.name} in DFU mode.` };
+    return { segs };
+  }
+  return { why: "This device is not supported yet." };
+}
+
+// The firmware's vector table: its reset handler where this product's builds put it.
+function checkFirmware(buf) {
+  if (buf.byteLength < 1024) return "it is too small";
+  if (P.maxSize && buf.byteLength > P.maxSize) return "it is too large";
+  const v = new DataView(buf);
+  const reset = v.getUint32(4, true);
+  const ranges = (P.resetVector || []).map(r => [hex(r[0]), hex(r[1])]);
+  if (!(reset & 1) || !ranges.some(r => reset >= r[0] && reset < r[1]))
+    return `it is not ${P.name} firmware (reset vector 0x${reset.toString(16)})`;
+  return null;
+}
+
+function setStatus(el, text, kind) { el.textContent = text || ""; el.className = "status" + (kind ? " " + kind : ""); }
+function setPhase(text, kind) { $("phase").textContent = text || ""; $("phase").style.color = kind ? `var(--${kind})` : ""; }
+function setBar(f) { $("bar").style.width = `${Math.round(f * 100)}%`; }
+function refresh() {
+  if (firmware) { $("fw").textContent = firmware.label(); $("flash").textContent = `Update to ${firmware.version}`; }
+  $("flash").disabled = !(firmware && dfu) || busy;
+  $("connect").disabled = busy || !navigator.usb || !firmware;
+}
+function unavailable(text) {
+  $("unavailable").textContent = text;
+  $("unavailable").hidden = false;
+  $("fw").textContent = "";
+}
+
+async function start() {
+  slug = location.pathname.replace(/\/index\.html$/, "").replace(/\/+$/, "").split("/").pop();
+  let cat;
+  try { cat = await (await fetch("../products.json", { cache: "no-store" })).json(); }
+  catch (e) { unavailable("The product list could not be loaded."); return; }
+  if (cat.page && cat.page !== PAGE_ID && new URLSearchParams(location.search).get("v") !== cat.page) {
+    location.replace(location.pathname + "?v=" + cat.page);
+    return;
+  }
+  P = cat.products[slug];
+  if (!P) { unavailable("Unknown device."); return; }
+  document.title = `${P.name} Updater · NANO Industries`;
+  $("pname").textContent = P.name;
+  const dev = P.device || "device";
+  if (!P.bootloader || !P.steps) {
+    $("lead").textContent = `Firmware updates for the ${P.name} are not available here yet.`;
+    $("fw").textContent = "";
+    return;
+  }
+  $("lead").textContent = `Update your ${P.name}'s firmware from the browser.` + (P.settingsKept ? " Your settings are kept." : "");
+  $("s1h").textContent = `Put the ${dev} in update mode`;
+  for (const s of P.steps.mode || []) { const li = document.createElement("li"); li.textContent = s; $("modeSteps").appendChild(li); }
+  if (P.steps.screen) {
+    for (const s of P.steps.screen) { const d = document.createElement("div"); d.textContent = s; $("glass").appendChild(d); }
+    $("glass").hidden = false;
+  }
+  $("connectText").textContent = P.steps.connect || "";
+  $("connect").textContent = `Find the ${P.name}`;
+  $("s3text").textContent = `Do not unplug or power off the ${dev} until it finishes. It takes a few seconds.`;
+  if (P.steps.exit) { const li = document.createElement("li"); li.textContent = P.steps.exit; $("helpList").appendChild(li); }
+  $("steps").hidden = false; $("help").hidden = false; $("adv").hidden = false;
+  if (!navigator.usb) $("nousb").hidden = false;
+
+  try {
+    const res = await fetch("firmware.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("none");
+    const m = await res.json();
+    const buf = await (await fetch(m.file, { cache: "no-store" })).arrayBuffer();
+    const sum = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buf)))
+      .map(b => b.toString(16).padStart(2, "0")).join("");
+    if (sum !== m.sha256 || buf.byteLength !== m.size) throw new Error("checksum");
+    if (checkFirmware(buf)) throw new Error("vector");
+    firmware = { bytes: new Uint8Array(buf), version: "v" + m.version,
+                 label: () => `Firmware v${m.version} · ${Math.round(buf.byteLength / 1024)} KB` };
+  } catch (e) {
+    $("fw").textContent = e.message === "none" ? `No ${P.name} firmware has been published yet.` : "This page's firmware could not be loaded.";
+  }
+  refresh();
+}
+
+$("file").addEventListener("change", async ev => {
+  const f = ev.target.files[0];
+  if (!f || !P) return;
+  const buf = await f.arrayBuffer();
+  const bad = checkFirmware(buf);
+  if (bad) { setPhase(`That file cannot be flashed: ${bad}.`, "err"); ev.target.value = ""; return; }
+  firmware = { bytes: new Uint8Array(buf), version: f.name, label: () => `File ${f.name} · ${Math.round(buf.byteLength / 1024)} KB` };
+  setPhase("");
+  refresh();
+});
+
+$("connect").addEventListener("click", async () => {
+  setStatus($("connStatus"), "");
+  dfu = null;
+  refresh();
+  let device;
+  try {
+    device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x0483, productId: 0xdf11 }] });
+  } catch (e) {
+    setStatus($("connStatus"), "No device was picked.", "warn");
+    return;
+  }
+  try {
+    await device.open();
+    if (!device.configuration) await device.selectConfiguration(1);
+    let names = null, pick = null, refusal = null;
+    const seen = [];
+    for (const intf of device.configuration.interfaces) {
+      for (const alt of intf.alternates) {
+        if (alt.interfaceClass !== 0xfe || alt.interfaceSubclass !== 0x01) continue;
+        let name = alt.interfaceName || "";
+        if (!name) {
+          if (!names) names = await interfaceNames(device);
+          name = names[`${intf.interfaceNumber}/${alt.alternateSetting}`] || "";
+        }
+        seen.push(name || "?");
+        const j = judge(name);
+        if (j.segs && !pick) pick = { intf: intf.interfaceNumber, alt: alt.alternateSetting, segs: j.segs };
+        else if (!j.segs && !refusal) refusal = j.why;
+      }
+    }
+    if (!pick) {
+      await device.close();
+      setStatus($("connStatus"), `${refusal || "That device has no DFU interface."} (${seen.join(" | ") || "nothing"})`, "err");
+      return;
+    }
+    await device.claimInterface(pick.intf);
+    await device.selectAlternateInterface(pick.intf, pick.alt);
+    dfu = new DfuSe(device, pick.intf, pick.segs, await transferSize(device));
+    await dfu.idle();
+    setStatus($("connStatus"), `${P.name} in update mode. Ready.`, "ok");
+    $("s1").classList.add("done"); $("s2").classList.add("done");
+  } catch (e) {
+    dfu = null;
+    try { await device.close(); } catch (e2) {}
+    setStatus($("connStatus"), "The device could not be opened. Is another program using it?", "err");
+  }
+  refresh();
+});
+
+$("flash").addEventListener("click", async () => {
+  if (!dfu || !firmware || busy) return;
+  busy = true; refresh();
+  const bytes = firmware.bytes, v = firmware.version, addr = hex(P.address);
+  const verify = P.bootloader === "stm32-rom";   // the Daisy bootloader answers reads encoded
+  try {
+    setBar(0); setPhase("Getting ready…");
+    await dfu.idle();
+    await dfu.erase(addr, bytes.length, (i, n) => { setPhase(`Erasing ${i}/${n}…`); setBar(0.15 * i / n); });
+    await dfu.write(addr, bytes, f => { setPhase(`Writing… ${Math.round(f * 100)} %`); setBar(0.15 + (verify ? 0.6 : 0.8) * f); });
+    if (verify) {
+      const back = await dfu.read(addr, bytes.length, f => { setPhase(`Checking… ${Math.round(f * 100)} %`); setBar(0.75 + 0.2 * f); });
+      for (let i = 0; i < bytes.length; i++)
+        if (back[i] !== bytes[i]) throw new Error(`check failed at 0x${(addr + i).toString(16)}`);
+    }
+    setPhase(`Restarting the ${P.device || "device"}…`); setBar(1);
+    await dfu.leave(addr);
+    setPhase(`Done. The ${P.name} now runs ${v}.`, "ok");
+    $("s3").classList.add("done");
+  } catch (e) {
+    setPhase(/check failed/.test(e.message)
+      ? `The firmware did not read back as written (${e.message}). Run the update again from step 1.`
+      : "The connection was lost. Run the update again from step 1.", "err");
+  }
+  dfu = null; busy = false;
+  setStatus($("connStatus"), "");
+  refresh();
+});
+
+start();
+</script>
+</body>
+</html>

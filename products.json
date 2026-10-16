@@ -1,0 +1,79 @@
+{
+  "groups": [
+    {
+      "name": "NANO Performance",
+      "products": [
+        "iso-f1",
+        "fx-dr2"
+      ]
+    },
+    {
+      "name": "NANO Modules",
+      "products": [
+        "performance-mixer",
+        "vcv-random",
+        "fum"
+      ]
+    }
+  ],
+  "products": {
+    "fx-dr2": {
+      "name": "FX-DR2",
+      "tagline": "Delay + reverb",
+      "device": "pedal",
+      "bootloader": "daisy",
+      "address": "0x90040000",
+      "resetVector": [
+        [
+          "0x24000000",
+          "0x24078000"
+        ]
+      ],
+      "maxSize": 491520,
+      "settingsKept": true,
+      "steps": {
+        "mode": [
+          "With the pedal off, hold down either of the two MODE buttons.",
+          "Power it on, still holding MODE, until the screen says:"
+        ],
+        "screen": [
+          "FIRMWARE UPDATE",
+          "USB-C ON THE BACK",
+          "POWER OFF TO EXIT"
+        ],
+        "connect": "Connect the USB-C on the back of the pedal straight to the computer, with no hub or adapter in between.",
+        "wrongPort": "Use the USB-C on the back of the pedal, with the pedal in FIRMWARE UPDATE.",
+        "exit": "To leave update mode without updating, power the pedal off and on."
+      }
+    },
+    "iso-f1": {
+      "name": "ISO-F1",
+      "device": "unit",
+      "bootloader": null
+    },
+    "performance-mixer": {
+      "name": "Performance Mixer",
+      "device": "module",
+      "bootloader": "stm32-rom",
+      "address": "0x08000000",
+      "layout": null,
+      "steps": null
+    },
+    "vcv-random": {
+      "name": "VCV Random",
+      "device": "module",
+      "bootloader": "stm32-rom",
+      "address": "0x08000000",
+      "layout": null,
+      "steps": null
+    },
+    "fum": {
+      "name": "FUM",
+      "device": "module",
+      "bootloader": "daisy",
+      "address": "0x90040000",
+      "steps": null
+    }
+  },
+  "page": "aab5b2435ee6"
+}

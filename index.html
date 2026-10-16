@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NANO Updater</title>
-<meta name="description" content="Actualiza el firmware de tus aparatos NANO Industries desde el navegador.">
+<meta name="description" content="Update the firmware of your NANO Industries devices from the browser.">
 <style>
   :root { --bg: #0b0d10; --panel: #13171c; --line: #232a32; --text: #e6e6e6; --dim: #8a9097; --cyan: #afdcfa; }
   * { box-sizing: border-box; }
@@ -13,31 +13,59 @@
   main { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
   .brand { font: 600 13px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .12em; color: var(--dim); }
   h1 { font-size: 32px; line-height: 1.15; margin: 28px 0 6px; }
-  .lead { color: var(--dim); margin: 0 0 28px; }
-  ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
-  a.product { display: flex; justify-content: space-between; align-items: center; gap: 16px;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px;
+  .lead { color: var(--dim); margin: 0 0 8px; }
+  h2 { font: 600 12px/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--dim); margin: 28px 0 10px; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  .product { display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px;
     color: inherit; text-decoration: none; }
   a.product:hover, a.product:focus-visible { border-color: var(--cyan); outline: none; }
-  .name { font: 600 20px/1.2 ui-monospace, Menlo, monospace; color: var(--cyan); }
-  .what { color: var(--dim); font-size: 14px; margin-top: 4px; }
+  .name { font: 600 19px/1.2 ui-monospace, Menlo, monospace; color: var(--cyan); }
+  .what { color: var(--dim); font-size: 14px; margin-top: 3px; }
+  .soon .name { color: var(--dim); }
   .go { color: var(--dim); font-size: 22px; }
-  footer { margin-top: 32px; color: var(--dim); font-size: 13px; }
+  footer { margin-top: 36px; color: var(--dim); font-size: 13px; }
 </style>
 </head>
 <body>
 <main>
   <div class="brand">NANO INDUSTRIES</div>
   <h1>Updater</h1>
-  <p class="lead">Elige tu aparato para actualizar su firmware desde el navegador (Chrome o Edge).<br>
-    Choose your device to update its firmware from the browser (Chrome or Edge).</p>
-  <ul>
-    <li><a class="product" href="fx-dr/">
-      <div><div class="name">FX-DR</div><div class="what">Delay + reverb</div></div>
-      <span class="go" aria-hidden="true">→</span>
-    </a></li>
-  </ul>
+  <p class="lead">Pick your device to update its firmware from the browser, in Chrome or Edge.</p>
+  <div id="list"></div>
   <footer>NANO Industries · Valencia, SPAIN</footer>
 </main>
+<script>
+"use strict";
+// The list comes from products.json, the same file every product page reads its settings from.
+(async () => {
+  const list = document.getElementById("list");
+  let cat;
+  try { cat = await (await fetch("products.json", { cache: "no-store" })).json(); }
+  catch (e) { list.textContent = "The product list could not be loaded."; return; }
+  for (const g of cat.groups) {
+    const h = document.createElement("h2"); h.textContent = g.name; list.appendChild(h);
+    const ul = document.createElement("ul");
+    for (const slug of g.products) {
+      const p = cat.products[slug]; if (!p) continue;
+      const ready = p.bootloader && p.steps;
+      const li = document.createElement("li");
+      const card = document.createElement(ready ? "a" : "div");
+      card.className = "product" + (ready ? "" : " soon");
+      if (ready) card.href = slug + "/";
+      const left = document.createElement("div");
+      const name = document.createElement("div"); name.className = "name"; name.textContent = p.name;
+      const what = document.createElement("div"); what.className = "what";
+      what.textContent = ready ? (p.tagline || "") : "Coming soon";
+      left.append(name, what);
+      card.appendChild(left);
+      if (ready) { const go = document.createElement("span"); go.className = "go"; go.setAttribute("aria-hidden", "true"); go.textContent = "→"; card.appendChild(go); }
+      li.appendChild(card); ul.appendChild(li);
+    }
+    list.appendChild(ul);
+  }
+})();
+</script>
 </body>
 </html>
