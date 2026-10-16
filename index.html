@@ -60,7 +60,8 @@
       what.textContent = ready ? (p.tagline || "") : "Coming soon";
       if (ready) fetch(slug + "/firmware.json", { cache: "no-store" })
         .then(r => (r.ok ? r.json() : null))
-        .then(m => { what.textContent = [p.tagline, m ? `Firmware v${m.version}` : "No firmware yet"].filter(Boolean).join(" · "); })
+        .then(m => { what.textContent = [p.tagline, !m ? "No firmware yet" : m.variants ? `${m.variants.length} models`
+          : m.version ? `Firmware v${m.version}` : `Firmware of ${m.date}`].filter(Boolean).join(" · "); })
         .catch(() => {});
       left.append(name, what);
       card.appendChild(left);

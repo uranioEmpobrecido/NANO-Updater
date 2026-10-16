@@ -1,0 +1,38 @@
+{
+  "product": "Performance Mixer",
+  "built": "2026-10-16T07:23:51Z",
+  "variants": [
+    {
+      "id": "standard",
+      "name": "Performance Mixer",
+      "date": "2025-04-17",
+      "file": "firmware/PerformanceMixer.bin",
+      "size": 32116,
+      "sha256": "a1b7c4d2a67bcdf4ceb11141f4d5989853096ea849f3e563f2590b934caa47ed"
+    },
+    {
+      "id": "tough",
+      "name": "Performance Mixer TOUGH",
+      "date": "2025-09-25",
+      "file": "firmware/PerformanceMixer-TOUGH.bin",
+      "size": 32116,
+      "sha256": "c54ccb9ba3d55f778349fc494abd440762508204f8cd24424880a8918099a840"
+    },
+    {
+      "id": "4ch-2164",
+      "name": "Performance Mixer 4CH (2164)",
+      "date": "2026-03-30",
+      "file": "firmware/PerformanceMixer-4CH-2164.bin",
+      "size": 32532,
+      "sha256": "7ad323a588954735c800d6c9672c74cf096efa427c0d26e3e688c1d6fbff2108"
+    },
+    {
+      "id": "f205",
+      "name": "Performance Mixer with STM32F205",
+      "date": "2026-09-08",
+      "file": "firmware/PerformanceMixer-F205.bin",
+      "size": 23936,
+      "sha256": "194fdd6c700d5de808946c4754c571ecab97c5eaa46060e8e327c6f678a18106"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source": "~/Development/Software/STM32-Dev/NANO Release Firmware",
+  "products": {
+    "iso-f1": [
+      { "file": "NANO Performance/ISO-F1_V1.1.bin", "version": "1.1" }
+    ],
+    "performance-mixer": [
+      { "id": "standard", "name": "Performance Mixer", "file": "NANO Modules/Performance Mixer/PerformanceMixer.bin" },
+      { "id": "tough", "name": "Performance Mixer TOUGH", "file": "NANO Modules/Performance Mixer/PerformanceMixer-TOUGH.bin" },
+      { "id": "4ch-2164", "name": "Performance Mixer 4CH (2164)", "file": "NANO Modules/Performance Mixer/PerformanceMixer-4CH-2164.bin" },
+      { "id": "f205", "name": "Performance Mixer with STM32F205", "file": "NANO Modules/Performance Mixer/PerformanceMixer-F205.bin" }
+    ],
+    "vcv-random": [
+      { "file": "NANO Modules/VCV-Random.bin" }
+    ],
+    "fum": [
+      { "file": "NANO Modules/NANO-FUM.bin" }
+    ]
+  }
+}

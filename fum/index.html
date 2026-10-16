@@ -51,6 +51,12 @@
   details p, details li { font-size: 14px; }
   code { font: 13px ui-monospace, Menlo, monospace; background: var(--line); padding: 1px 5px; border-radius: 4px; color: var(--text); }
   input[type=file] { color: var(--dim); font-size: 13px; }
+  .choices { display: grid; gap: 8px; margin-top: 12px; }
+  .choice { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line);
+    border-radius: 10px; cursor: pointer; }
+  .choice:has(input:checked) { border-color: var(--cyan); }
+  .choice input { accent-color: var(--cyan); margin: 0; }
+  .choice small { margin-left: auto; color: var(--dim); font: 12px ui-monospace, Menlo, monospace; }
 </style>
 </head>
 <body>
@@ -67,13 +73,18 @@
   <div class="notice" id="unavailable" hidden></div>
 
   <ol class="steps" id="steps" hidden>
+    <li class="step" id="s0" hidden>
+      <h2><span class="num"></span><span id="s0h"></span></h2>
+      <p>Each one runs its own firmware. Pick the one you have.</p>
+      <div class="choices" id="variants"></div>
+    </li>
     <li class="step" id="s1">
-      <h2><span class="num">1</span><span id="s1h"></span></h2>
+      <h2><span class="num"></span><span id="s1h"></span></h2>
       <ul id="modeSteps"></ul>
       <div class="glass" id="glass" aria-hidden="true" hidden></div>
     </li>
     <li class="step" id="s2">
-      <h2><span class="num">2</span><span>Connect it and find it</span></h2>
+      <h2><span class="num"></span><span>Connect it and find it</span></h2>
       <p><span id="connectText"></span> Then press the button and pick the device in the list.</p>
       <div class="row">
         <button class="primary" id="connect"></button>
@@ -81,7 +92,7 @@
       </div>
     </li>
     <li class="step" id="s3">
-      <h2><span class="num">3</span><span>Update</span></h2>
+      <h2><span class="num"></span><span>Update</span></h2>
       <p id="s3text"></p>
       <div class="row">
         <button class="primary" id="flash" disabled>Update</button>
@@ -97,7 +108,7 @@
       <li>The list is empty: check that the device is in update mode and that the cable goes straight to the computer, not through a hub. Try another cable: some only charge.</li>
       <li>Windows: the first time you may need to install the WinUSB driver for the device (VID 0483, PID DF11) with Zadig (zadig.akeo.ie).</li>
       <li>Linux: give the device permission with a udev rule: <code>SUBSYSTEMS=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="df11", MODE="0666"</code></li>
-      <li>If an update is interrupted, nothing is lost: go back to step 1 and run it again.</li>
+      <li>If an update is interrupted, nothing is lost: put the device in update mode again and run it again.</li>
     </ul>
   </details>
 
@@ -113,7 +124,7 @@
 
 // This page's build, stamped by build.py. products.json (never cached) names the current one: a
 // copy the browser or the CDN kept from an older publish reloads itself as the new one.
-const PAGE_ID = "dfba4b3b2ca6";
+const PAGE_ID = "c63f8af669ca";
 
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -273,7 +284,8 @@ async function transferSize(dev) {
 // The product (products.json, by this page's folder) and what it accepts
 // ---------------------------------------------------------------------------------------------
 let P = null, slug = "";
-let firmware = null;   // { bytes, version, label }
+let builds = [];       // firmware.json: one build, or one per model ("variants")
+let firmware = null;   // what step 3 flashes: { bytes, button, label, done }
 let dfu = null;
 let busy = false;
 
@@ -319,9 +331,37 @@ function setStatus(el, text, kind) { el.textContent = text || ""; el.className =
 function setPhase(text, kind) { $("phase").textContent = text || ""; $("phase").style.color = kind ? `var(--${kind})` : ""; }
 function setBar(f) { $("bar").style.width = `${Math.round(f * 100)}%`; }
 function refresh() {
-  if (firmware) { $("fw").textContent = firmware.label(); $("flash").textContent = `Update to ${firmware.version}`; }
+  if (firmware) { $("fw").textContent = firmware.label; $("flash").textContent = firmware.button; }
+  else $("flash").textContent = "Update";
   $("flash").disabled = !(firmware && dfu) || busy;
-  $("connect").disabled = busy || !navigator.usb || !firmware;
+  $("connect").disabled = busy || !navigator.usb || !(firmware || builds.length > 1);
+}
+function numberSteps() {
+  let n = 0;
+  for (const li of document.querySelectorAll("#steps > li")) if (!li.hidden) li.querySelector(".num").textContent = ++n;
+}
+const modeStep = () => $("s1").querySelector(".num").textContent;
+
+// A published build, fetched and checked against its firmware.json entry and this product.
+async function loadBuild(b, named) {
+  const buf = await (await fetch(b.file, { cache: "no-store" })).arrayBuffer();
+  const sum = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buf)))
+    .map(x => x.toString(16).padStart(2, "0")).join("");
+  if (sum !== b.sha256 || buf.byteLength !== b.size) throw new Error("checksum");
+  if (checkFirmware(buf)) throw new Error("vector");
+  const tag = b.version ? `v${b.version}` : `the ${b.date} build`;
+  const kb = `${Math.round(buf.byteLength / 1024)} KB`;
+  return {
+    bytes: new Uint8Array(buf), button: `Update to ${tag}`,
+    label: (named ? `${b.name} · ` : "") + `Firmware ${b.version ? tag : "of " + b.date} · ${kb}`,
+    done: named ? `Done. It now runs the ${b.name} firmware, ${tag}.` : `Done. The ${P.name} now runs ${tag}.`,
+  };
+}
+function chooseBuild(b) {
+  firmware = null; refresh();
+  loadBuild(b, true).then(f => { firmware = f; $("s0").classList.add("done"); })
+    .catch(() => { $("fw").textContent = `The ${b.name} firmware could not be loaded.`; })
+    .finally(refresh);
 }
 function unavailable(text) {
   $("unavailable").textContent = text;
@@ -367,16 +407,31 @@ async function start() {
     const res = await fetch("firmware.json", { cache: "no-store" });
     if (!res.ok) throw new Error("none");
     const m = await res.json();
-    const buf = await (await fetch(m.file, { cache: "no-store" })).arrayBuffer();
-    const sum = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buf)))
-      .map(b => b.toString(16).padStart(2, "0")).join("");
-    if (sum !== m.sha256 || buf.byteLength !== m.size) throw new Error("checksum");
-    if (checkFirmware(buf)) throw new Error("vector");
-    firmware = { bytes: new Uint8Array(buf), version: "v" + m.version,
-                 label: () => `Firmware v${m.version} · ${Math.round(buf.byteLength / 1024)} KB` };
+    builds = m.variants || [m];
+    if (builds.length > 1) {
+      // Several models of this product, each with its own firmware: the owner picks theirs. No
+      // default, so the choice is always made on purpose.
+      $("s0h").textContent = `Which ${P.name} is it?`;
+      for (const b of builds) {
+        const row = document.createElement("label"), radio = document.createElement("input");
+        const name = document.createElement("span"), what = document.createElement("small");
+        row.className = "choice";
+        radio.type = "radio"; radio.name = "variant";
+        radio.addEventListener("change", () => chooseBuild(b));
+        name.textContent = b.name;
+        what.textContent = b.version ? `v${b.version}` : b.date;
+        row.append(radio, name, what);
+        $("variants").appendChild(row);
+      }
+      $("s0").hidden = false;
+      $("fw").textContent = `${builds.length} models: pick yours in step 1.`;
+    } else {
+      firmware = await loadBuild(builds[0], false);
+    }
   } catch (e) {
     $("fw").textContent = e.message === "none" ? `No ${P.name} firmware has been published yet.` : "This page's firmware could not be loaded.";
   }
+  numberSteps();
   refresh();
 }
 
@@ -386,7 +441,8 @@ $("file").addEventListener("change", async ev => {
   const buf = await f.arrayBuffer();
   const bad = checkFirmware(buf);
   if (bad) { setPhase(`That file cannot be flashed: ${bad}.`, "err"); ev.target.value = ""; return; }
-  firmware = { bytes: new Uint8Array(buf), version: f.name, label: () => `File ${f.name} · ${Math.round(buf.byteLength / 1024)} KB` };
+  firmware = { bytes: new Uint8Array(buf), button: `Update to ${f.name}`, label: `File ${f.name} · ${Math.round(buf.byteLength / 1024)} KB`,
+               done: `Done. The ${P.name} now runs ${f.name}.` };
   setPhase("");
   refresh();
 });
@@ -443,7 +499,7 @@ $("connect").addEventListener("click", async () => {
 $("flash").addEventListener("click", async () => {
   if (!dfu || !firmware || busy) return;
   busy = true; refresh();
-  const bytes = firmware.bytes, v = firmware.version, addr = hex(P.address);
+  const bytes = firmware.bytes, done = firmware.done, addr = hex(P.address);
   const verify = P.bootloader === "stm32-rom";   // the Daisy bootloader answers reads encoded
   try {
     setBar(0); setPhase("Getting ready…");
@@ -457,12 +513,12 @@ $("flash").addEventListener("click", async () => {
     }
     setPhase(`Restarting the ${P.device || "device"}…`); setBar(1);
     await dfu.leave(addr);
-    setPhase(`Done. The ${P.name} now runs ${v}.`, "ok");
+    setPhase(done, "ok");
     $("s3").classList.add("done");
   } catch (e) {
     setPhase(/check failed/.test(e.message)
-      ? `The firmware did not read back as written (${e.message}). Run the update again from step 1.`
-      : "The connection was lost. Run the update again from step 1.", "err");
+      ? `The firmware did not read back as written (${e.message}). Run the update again from step ${modeStep()}.`
+      : `The connection was lost. Run the update again from step ${modeStep()}.`, "err");
   }
   dfu = null; busy = false;
   setStatus($("connStatus"), "");
