@@ -111,6 +111,19 @@
   code { font: 13px/20px var(--mono); background: var(--rail); padding: 0 4px; color: var(--white); overflow-wrap: anywhere; }
   input[type=file] { color: var(--dim); font: 14px/22px var(--mono); }
   footer { margin-top: 36px; color: var(--dim); text-align: center; text-transform: uppercase; font-size: 13px; letter-spacing: .08em; }
+  /* Tester mode's control, at the foot */
+  .tester { margin-top: 10px; font-size: 13px; color: var(--dim); text-transform: none; letter-spacing: 0; }
+  .tlink { appearance: none; background: none; border: 0; padding: 0; font: inherit; color: var(--dim);
+    text-decoration: underline; cursor: pointer; }
+  .tlink:hover { color: var(--white); }
+  .tform { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .tform input { font: 14px/22px var(--mono); background: #000; color: var(--white); border: 2px solid var(--line);
+    padding: 2px 8px; width: 160px; }
+  .tform button { font: 14px/22px var(--mono); background: var(--accent); color: #000; border: 0; padding: 2px 10px; cursor: pointer; }
+  .tmsg { color: var(--err, #eb4238); }
+  .badge { font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 10px; border: 1px solid currentColor;
+    letter-spacing: .06em; vertical-align: middle; }
+
   @media (max-width: 420px) {
     h1, .pct { font-size: 30px; line-height: 38px; }
     .dashes i { width: 14px; }
@@ -182,7 +195,7 @@
     <input type="file" id="file" accept=".bin,application/octet-stream">
   </details>
 
-  <footer>NANO Industries · Valencia, SPAIN</footer>
+  <footer>NANO Industries · Valencia, SPAIN<div class="tester" id="tester"></div></footer>
 </main>
 
 <script>
@@ -190,7 +203,54 @@
 
 // This page's build, stamped by build.py. products.json (never cached) names the current one: a
 // copy the browser or the CDN kept from an older publish reloads itself as the new one.
-const PAGE_ID = "1bd84ce2c03d";
+const PAGE_ID = "f8e5979e917e";
+
+// Tester mode. Products marked "unreleased" in products.json show only to testers: one enters the
+// code once (TESTER, at the foot of the page) and this browser keeps its salted hash — never the
+// code — and shows them from then on. It hides, it does not protect: the site is static and its
+// repository public.
+const TESTER_KEY = "nanoTester";
+async function sha256hex(s) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, "0")).join("");
+}
+function testerOn(cat) {
+  try { return !!cat.tester && localStorage.getItem(TESTER_KEY) === cat.tester.hash; } catch (e) { return false; }
+}
+async function testerUnlock(cat, code) {
+  if (!cat.tester || !code.trim()) return false;
+  const h = await sha256hex(cat.tester.salt + code.trim());
+  if (h !== cat.tester.hash) return false;
+  try { localStorage.setItem(TESTER_KEY, h); } catch (e) {}
+  return true;
+}
+function testerLock() { try { localStorage.removeItem(TESTER_KEY); } catch (e) {} }
+// The control at the foot: "Tester" opens a code field; in tester mode, "Tester mode · Exit".
+function testerControl(box, cat, changed) {
+  box.replaceChildren();
+  if (!cat.tester) return;
+  const link = (text, fn) => { const a = document.createElement("button"); a.type = "button"; a.className = "tlink"; a.textContent = text; a.onclick = fn; return a; };
+  if (testerOn(cat)) {
+    const s = document.createElement("span"); s.textContent = "Tester mode · ";
+    box.append(s, link("Exit", () => { testerLock(); changed(); }));
+    return;
+  }
+  box.append(link("Tester", () => {
+    box.replaceChildren();
+    const f = document.createElement("form"); f.className = "tform";
+    const i = document.createElement("input"); i.type = "password"; i.autocomplete = "off"; i.placeholder = "Tester code";
+    const b = document.createElement("button"); b.type = "submit"; b.textContent = "Enter";
+    const m = document.createElement("span"); m.className = "tmsg";
+    f.append(i, b, m);
+    f.onsubmit = async ev => {
+      ev.preventDefault();
+      if (await testerUnlock(cat, i.value)) changed();
+      else { m.textContent = "Wrong code"; i.select(); }
+    };
+    box.append(f); i.focus();
+  }));
+}
+
 
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -463,10 +523,20 @@ async function start() {
   }
   P = cat.products[slug];
   if (!P) { unavailable("Unknown device."); return; }
+  // An unreleased product is a tester's only: anyone else gets this, and the code field.
+  testerControl($("tester"), cat, () => location.reload());
+  if (P.unreleased && !testerOn(cat)) {
+    document.title = "NANO Updater";
+    $("pname").textContent = "Not available";
+    $("lead").textContent = "This updater is not available.";
+    $("fw").textContent = "";
+    return;
+  }
   const group = (cat.groups || []).find(g => g.products.includes(slug));
   if (group && group.accent) document.documentElement.style.setProperty("--accent", group.accent);
   document.title = `${P.name} Updater · NANO Industries`;
   $("pname").textContent = P.name;
+  if (P.unreleased) $("pname").insertAdjacentHTML("beforeend", '<span class="badge">Unreleased</span>');
   const dev = P.device || "device";
   if (!P.bootloader || !P.steps) {
     $("lead").textContent = `Firmware updates for the ${P.name} are not available here yet.`;

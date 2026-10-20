@@ -26,4 +26,13 @@ https://uranioempobrecido.github.io/NANO-Updater/
   SIL OFL (`fonts/OFL.txt`). A group's `accent` in `products.json` colours its products (NANO
   Modules: the yellow of its panels).
 
+- **Unreleased products and tester mode.** A product with `"unreleased": true` in
+  `products.json` is left off the front page, and its own page says it is not available — unless
+  the browser is in tester mode. A tester gets there with **Tester**, at the foot of any of those
+  pages, and the tester code; the browser remembers it (only the code's salted hash, in
+  localStorage) until **Exit**. Set or change the code with `python3 tester_code.py 'the code'`
+  (only the salt and hash go into `products.json`; changing it signs every tester out). This
+  HIDES products, it does not protect them: the site is static and this repository public, so
+  `products.json` and the firmware files can still be read by anyone who looks.
+
 After editing `products.json` or `template.html`, run `python3 build.py`, then commit and push.

@@ -20,6 +20,7 @@
   "products": {
     "fx-dr2": {
       "name": "FX-DR2",
+      "unreleased": true,
       "description": "Work in progress",
       "device": "pedal",
       "bootloader": "daisy",
@@ -145,5 +146,9 @@
       }
     }
   },
-  "page": "1bd84ce2c03d"
+  "page": "f8e5979e917e",
+  "tester": {
+    "salt": "56c47e221c420965",
+    "hash": "993172960ff51ec7514408cb0e50470f9244e525cc48762ecad28fe280ba198f"
+  }
 }
