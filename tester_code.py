@@ -5,6 +5,7 @@
     python3 build.py
 
 Only a salted SHA-256 of the code goes into products.json; the code itself is never stored.
+Upper and lower case are the same: the code is lower-cased here and on the pages.
 Changing it locks out every tester until they enter the new one. This hides products from the
 public pages; it does not protect them (the site is static and its repository public).
 """
@@ -16,7 +17,7 @@ HERE = Path(__file__).resolve().parent
 def main():
     if len(sys.argv) != 2 or not sys.argv[1].strip():
         sys.exit(__doc__)
-    code = sys.argv[1].strip()
+    code = sys.argv[1].strip().lower()   # case does not matter: the pages lower-case what is typed
     salt = secrets.token_hex(8)
     cat = json.loads((HERE / "products.json").read_text())
     cat["tester"] = {"salt": salt, "hash": hashlib.sha256((salt + code).encode()).hexdigest()}

@@ -112,15 +112,22 @@
   input[type=file] { color: var(--dim); font: 14px/22px var(--mono); }
   footer { margin-top: 36px; color: var(--dim); text-align: center; text-transform: uppercase; font-size: 13px; letter-spacing: .08em; }
   /* Tester mode's control, at the foot */
-  .tester { margin-top: 10px; font-size: 13px; color: var(--dim); text-transform: none; letter-spacing: 0; }
+  .tester { margin-top: 14px; font-size: 13px; color: var(--dim); }
   .tlink { appearance: none; background: none; border: 0; padding: 0; font: inherit; color: var(--dim);
+    text-transform: inherit; letter-spacing: inherit;
     text-decoration: underline; cursor: pointer; }
   .tlink:hover { color: var(--white); }
   .tform { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
   .tform input { font: 14px/22px var(--mono); background: #000; color: var(--white); border: 2px solid var(--line);
     padding: 2px 8px; width: 160px; }
-  .tform button { font: 14px/22px var(--mono); background: var(--accent); color: #000; border: 0; padding: 2px 10px; cursor: pointer; }
-  .tmsg { color: var(--err, #eb4238); }
+  .tform button { font: 14px/22px var(--mono); background: var(--accent); color: #000; border: 0; padding: 2px 10px;
+    cursor: pointer; text-transform: uppercase; letter-spacing: .08em; }
+  .tmsg { color: var(--err, #eb4238); text-transform: uppercase; letter-spacing: .08em; }
+  /* the way in: a restricted-area stamp rather than a link */
+  .tgate { text-decoration: none; border: 1px solid var(--line); padding: 4px 10px; letter-spacing: .14em;
+    text-transform: uppercase; }
+  .tgate:hover, .tgate:focus-visible { border-color: var(--accent); color: var(--accent); }
+  .tgranted { color: var(--accent); }
   .badge { font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 10px; border: 1px solid currentColor;
     letter-spacing: .06em; vertical-align: middle; }
 
@@ -203,7 +210,7 @@
 
 // This page's build, stamped by build.py. products.json (never cached) names the current one: a
 // copy the browser or the CDN kept from an older publish reloads itself as the new one.
-const PAGE_ID = "f8e5979e917e";
+const PAGE_ID = "8839782b99c3";
 
 // Tester mode. Products marked "unreleased" in products.json show only to testers: one enters the
 // code once (TESTER, at the foot of the page) and this browser keeps its salted hash — never the
@@ -219,7 +226,7 @@ function testerOn(cat) {
 }
 async function testerUnlock(cat, code) {
   if (!cat.tester || !code.trim()) return false;
-  const h = await sha256hex(cat.tester.salt + code.trim());
+  const h = await sha256hex(cat.tester.salt + code.trim().toLowerCase());   // case does not matter
   if (h !== cat.tester.hash) return false;
   try { localStorage.setItem(TESTER_KEY, h); } catch (e) {}
   return true;
@@ -231,24 +238,26 @@ function testerControl(box, cat, changed) {
   if (!cat.tester) return;
   const link = (text, fn) => { const a = document.createElement("button"); a.type = "button"; a.className = "tlink"; a.textContent = text; a.onclick = fn; return a; };
   if (testerOn(cat)) {
-    const s = document.createElement("span"); s.textContent = "Tester mode · ";
+    const s = document.createElement("span"); s.className = "tgranted"; s.textContent = "Tester access granted · ";
     box.append(s, link("Exit", () => { testerLock(); changed(); }));
     return;
   }
-  box.append(link("Tester", () => {
+  const open = link("Hardware tester access", () => {
     box.replaceChildren();
     const f = document.createElement("form"); f.className = "tform";
-    const i = document.createElement("input"); i.type = "password"; i.autocomplete = "off"; i.placeholder = "Tester code";
+    const i = document.createElement("input"); i.type = "password"; i.autocomplete = "off"; i.placeholder = "Access code";
     const b = document.createElement("button"); b.type = "submit"; b.textContent = "Enter";
     const m = document.createElement("span"); m.className = "tmsg";
     f.append(i, b, m);
     f.onsubmit = async ev => {
       ev.preventDefault();
       if (await testerUnlock(cat, i.value)) changed();
-      else { m.textContent = "Wrong code"; i.select(); }
+      else { m.textContent = "Access denied"; i.select(); }
     };
     box.append(f); i.focus();
-  }));
+  });
+  open.classList.add("tgate");
+  box.append(open);
 }
 
 
