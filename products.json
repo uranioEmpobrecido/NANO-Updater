@@ -12,7 +12,8 @@
       "products": [
         "performance-mixer",
         "vcv-random",
-        "fum"
+        "fum",
+        "cicle"
       ],
       "accent": "#FAC300"
     }
@@ -143,6 +144,31 @@
         ],
         "connect": "Use the USB on the Daisy module itself, straight to the computer, with no hub in between.",
         "exit": "To leave DFU mode without updating, press RESET on the Daisy module."
+      }
+    },
+    "cicle": {
+      "name": "CICLE",
+      "unreleased": true,
+      "description": "Six channels of CV, gates and drums",
+      "device": "module",
+      "chip": "STM32F405",
+      "bootloader": "stm32-rom",
+      "address": "0x08000000",
+      "layoutPattern": "^@Internal Flash\\s*/0x08000000/04\\*016Kg,01\\*064Kg,07\\*128Kg$",
+      "resetVector": [
+        [
+          "0x08000000",
+          "0x08100000"
+        ]
+      ],
+      "maxSize": 1048576,
+      "steps": {
+        "mode": [
+          "Connect the module's USB to the computer, with the module powered.",
+          "Hold down BOOT, press and release RESET, then release BOOT."
+        ],
+        "connect": "Use the module's USB, straight to the computer, with no hub in between.",
+        "exit": "To leave DFU mode without updating, press RESET."
       }
     }
   },

@@ -15,6 +15,9 @@
     ],
     "fum": [
       { "file": "NANO Modules/NANO-FUM.bin" }
+    ],
+    "cicle": [
+      { "file": "NANO Modules/CICLE.bin" }
     ]
   }
 }
