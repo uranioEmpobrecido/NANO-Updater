@@ -1,8 +1,8 @@
 {
   "product": "CICLE",
-  "built": "2026-10-21T14:14:16Z",
-  "date": "2026-10-21",
+  "built": "2026-10-22T15:45:20Z",
+  "date": "2026-10-22",
   "file": "firmware/CICLE.bin",
-  "size": 476864,
-  "sha256": "7f1f38f1a5bcd4a4d41965be830f1f488e453c400036a3cce70c440b47fa13ef"
+  "size": 497224,
+  "sha256": "bfd40423dd8740b7011383137309327bfcacc6bb00ed04a278ff9831c88f552f"
 }
