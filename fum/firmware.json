@@ -1,8 +1,8 @@
 {
   "product": "FUM",
-  "built": "2026-10-22T07:58:02Z",
-  "date": "2026-10-22",
+  "built": "2026-10-26T08:24:15Z",
+  "date": "2026-10-26",
   "file": "firmware/NANO-FUM.bin",
-  "size": 126588,
-  "sha256": "a1adae76218d1035cf430cad239216f41ab2dbfe7c86452db1efdfa3f6d467a2"
+  "size": 126572,
+  "sha256": "1a8aa8bf491923b8bc62e77e8ddc2b21b14af3e6b38c96152b7f242620f2219b"
 }
