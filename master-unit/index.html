@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NANO Updater</title>
+<meta name="description" content="Update the firmware of your NANO Industries device from the browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap">
+<style>
+  /* The look of our products' screens: black glass, inverted chips, rails, page dashes, in
+     JetBrains Mono, regular weight. The device's own screen (.glass) is drawn in its own bitmap font, "NANO
+     Screen" (fonts/, built from the firmware by tools/screen_fonts.py), at 18 px so each of its
+     pixels is a whole CSS pixel. */
+  @font-face { font-family: "NANO Screen"; src: url(../fonts/nano-screen-18.ttf) format("truetype"); font-display: block; }
+  @font-face { font-family: "NANO Screen"; font-weight: 700; src: url(../fonts/nano-screen-18-bold.ttf) format("truetype"); font-display: block; }
+  :root {
+    /* theme.h */
+    --bg: #000; --bezel: #1c2127; --white: #e6e6e6; --gray: #b2b2b2; --dim: #878787;
+    --line: #40404a; --guide: #3e3e48; --rail: #1e1e24; --red: #eb4238; --amber: #ff8c00;
+    --accent: #afdcfa;                                                  /* kCyan; a group can set its own */
+    --ok: var(--accent); --warn: var(--amber); --err: var(--red);
+    --accent-fill: color-mix(in srgb, var(--accent) 68%, #000);         /* rail fill */
+    --accent-rule: color-mix(in srgb, var(--accent) 56%, #000);         /* section rules */
+    --accent-ghost: color-mix(in srgb, var(--accent) 34%, #000);
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* .glass and .steps set their own display */
+  html, body { margin: 0; background: var(--bg); color: var(--white); }
+  body { font: 16px/26px var(--mono); }   /* regular weight only: the brand's type */
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px dashed var(--accent); outline-offset: 2px; }
+
+  /* the screens' header: "SETTINGS FILTER", page dashes, a rule */
+  .bar-top { display: flex; align-items: center; gap: 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent-rule); }
+  .bar-top { font-size: 14px; letter-spacing: .08em; }
+  .bar-top .where { color: var(--dim); text-decoration: none; text-transform: uppercase; }
+  .bar-top .where:hover { color: var(--white); }
+  .bar-top .what { color: var(--white); }
+  .dashes { margin-left: auto; display: flex; gap: 6px; }
+  .dashes i { width: 22px; height: 6px; background: var(--dim); }
+  .dashes i.done { background: var(--accent-ghost); }
+  .dashes i.now { background: var(--accent); }
+
+  h1 { font: 400 40px/48px var(--mono); color: var(--accent); margin: 28px 0 8px;
+    text-transform: uppercase; overflow-wrap: anywhere; }
+  .lead { color: var(--gray); margin: 0 0 4px; }
+  .fw { font-size: 13px; line-height: 20px; color: var(--dim); margin: 0 0 24px; }
+
+  .notice { border: 2px solid var(--amber); color: var(--amber); padding: 12px 14px; margin-bottom: 18px; }
+
+  /* each step is a screen of its own */
+  ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+  .step { background: #000; border: 4px solid var(--bezel); border-radius: 14px; padding: 12px 16px 18px; }
+  .step h2 { font: 400 15px/26px var(--mono); letter-spacing: .06em; margin: 0 0 10px; padding-bottom: 6px; display: flex; gap: 12px;
+    border-bottom: 2px solid var(--accent-ghost); text-transform: uppercase; }
+  .step h2 .num { color: var(--dim); font-weight: 400; white-space: nowrap; flex: none; }
+  .step h2 .num::before { content: "STEP "; }
+  .step h2::after { content: ""; margin-left: auto; color: var(--accent); font-weight: 400; }
+  .step.done h2::after { content: "DONE"; }
+  .step p, .step li { color: var(--gray); margin: 4px 0; }
+  .step ul, details ul { margin: 4px 0 0; padding: 0; list-style: none; }
+  .step ul li, details li { padding-left: 20px; position: relative; }
+  .step ul li::before, details li::before { content: "·"; position: absolute; left: 0; color: var(--accent); }
+
+  /* the update-mode screen, as the device shows it */
+  .glass { margin: 14px auto 4px; width: min(100%, 320px); aspect-ratio: 320 / 172; background: #000;
+    border-radius: 14px; border: 6px solid var(--bezel); display: grid; place-content: center; text-align: center; color: var(--white);
+    font: 18px/28px "NANO Screen", var(--mono); -webkit-font-smoothing: none; }
+  .glass div:first-child { color: var(--accent); font-weight: 700; }
+  .glass div:last-child:not(:first-child) { color: var(--dim); }
+
+  /* options, as on the SETTINGS pages: the chosen one is an inverted chip */
+  .choices { display: grid; margin-top: 10px; }
+  .choice { display: flex; gap: 12px; align-items: center; padding: 6px 8px; cursor: pointer; text-transform: uppercase;
+    font-size: 15px; letter-spacing: .04em;
+    border-bottom: 2px solid var(--line); }
+  .choice:last-child { border-bottom: 0; }
+  .choice input { position: absolute; opacity: 0; pointer-events: none; }
+  .choice small { margin-left: auto; color: var(--dim); font: inherit; white-space: nowrap; flex: none; }
+  .choice:hover { color: var(--accent); }
+  .choice:has(input:checked) { background: var(--accent); color: #000; }
+  .choice:has(input:checked) small { color: #000; }
+  .choice:has(input:focus-visible) { outline: 2px dashed var(--accent); outline-offset: 2px; }
+
+  /* buttons are chips too */
+  button.primary { appearance: none; border: 0; border-radius: 0; background: var(--accent); color: #000;
+    font: 400 15px/26px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 8px 18px; cursor: pointer; }
+  button.primary:hover:not(:disabled) { background: var(--white); }
+  button.primary:disabled { background: var(--rail); color: var(--dim); cursor: default; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 14px; }
+  .status { color: var(--dim); }
+  .status.ok { color: var(--accent); } .status.warn { color: var(--amber); } .status.err { color: var(--red); }
+
+  /* progress: a label, the big number, a rail */
+  .meter { display: flex; align-items: flex-end; gap: 12px; margin-top: 16px; }
+  .phase { color: var(--gray); text-transform: uppercase; letter-spacing: .06em; font-size: 14px; flex: 1; min-height: 26px; }
+  .pct { font: 400 40px/48px var(--mono); color: var(--accent); }
+  .rail { height: 8px; background: var(--rail); margin-top: 6px; }
+  .rail > div { height: 100%; width: 0; background: var(--accent-fill); border-right: 2px solid var(--accent); transition: width .15s; }
+
+  details { margin-top: 24px; color: var(--dim); }
+  details summary { cursor: pointer; list-style: none; text-transform: uppercase; font-size: 14px; letter-spacing: .06em; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "+ "; color: var(--accent); }
+  details[open] summary::before { content: "- "; }
+  details p, details li { font-size: 14px; line-height: 22px; margin: 8px 0; }
+  code { font: 13px/20px var(--mono); background: var(--rail); padding: 0 4px; color: var(--white); overflow-wrap: anywhere; }
+  input[type=file] { color: var(--dim); font: 14px/22px var(--mono); }
+  footer { margin-top: 36px; color: var(--dim); text-align: center; text-transform: uppercase; font-size: 13px; letter-spacing: .08em; }
+  /* Tester mode's control, at the foot */
+  .tester { margin-top: 14px; font-size: 13px; color: var(--dim); }
+  .tlink { appearance: none; background: none; border: 0; padding: 0; font: inherit; color: var(--dim);
+    text-transform: inherit; letter-spacing: inherit;
+    text-decoration: underline; cursor: pointer; }
+  .tlink:hover { color: var(--white); }
+  .tform { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .tform input { font: 14px/22px var(--mono); background: #000; color: var(--white); border: 2px solid var(--line);
+    padding: 2px 8px; width: 160px; }
+  .tform button { font: 14px/22px var(--mono); background: var(--accent); color: #000; border: 0; padding: 2px 10px;
+    cursor: pointer; text-transform: uppercase; letter-spacing: .08em; }
+  .tmsg { color: var(--err, #eb4238); text-transform: uppercase; letter-spacing: .08em; }
+  /* the way in: a restricted-area stamp rather than a link */
+  .tgate { text-decoration: none; border: 1px solid var(--line); padding: 4px 10px; letter-spacing: .14em;
+    text-transform: uppercase; }
+  .tgate:hover, .tgate:focus-visible { border-color: var(--accent); color: var(--accent); }
+  .tgranted { color: var(--accent); }
+  .badge { font-size: 11px; line-height: 16px; padding: 0 6px; margin-left: 10px; border: 1px solid currentColor;
+    letter-spacing: .06em; vertical-align: middle; }
+
+  @media (max-width: 420px) {
+    h1, .pct { font-size: 30px; line-height: 38px; }
+    .dashes i { width: 14px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="bar-top">
+    <a class="where" href="../">← NANO Updater</a>
+    <span class="dashes" id="dashes" aria-hidden="true"></span>
+  </div>
+
+  <h1 id="pname">…</h1>
+  <p class="lead" id="lead"></p>
+  <p class="fw" id="fw">Loading…</p>
+
+  <div class="notice" id="nousb" hidden>
+    This browser cannot talk to USB devices. Open this page in Chrome or Edge, on a computer.
+  </div>
+  <div class="notice" id="unavailable" hidden></div>
+
+  <ol class="steps" id="steps" hidden>
+    <li class="step" id="s0" hidden>
+      <h2><span class="num"></span><span id="s0h"></span></h2>
+      <p>Each one runs its own firmware. Pick the one you have.</p>
+      <div class="choices" id="variants"></div>
+    </li>
+    <li class="step" id="s1">
+      <h2><span class="num"></span><span id="s1h"></span></h2>
+      <ul id="modeSteps"></ul>
+      <div class="glass" id="glass" aria-hidden="true" hidden></div>
+    </li>
+    <li class="step" id="s2">
+      <h2><span class="num"></span><span>Connect it</span></h2>
+      <p><span id="connectText"></span> Then press the button and pick the device in the list.</p>
+      <div class="row">
+        <button class="primary" id="connect"></button>
+        <span class="status" id="connStatus"></span>
+      </div>
+    </li>
+    <li class="step" id="s3">
+      <h2><span class="num"></span><span>Update</span></h2>
+      <p id="s3text"></p>
+      <div class="row">
+        <button class="primary" id="flash" disabled>Update</button>
+      </div>
+      <div class="meter">
+        <div class="phase" id="phase" role="status" aria-live="polite"></div>
+        <div class="pct" id="pct" aria-hidden="true"></div>
+      </div>
+      <div class="rail" aria-hidden="true"><div id="bar"></div></div>
+    </li>
+  </ol>
+
+  <details id="help" hidden>
+    <summary>If something goes wrong</summary>
+    <ul id="helpList">
+      <li>The list is empty: check that the device is in update mode and that the cable goes straight to the computer, not through a hub. Try another cable: some only charge.</li>
+      <li>Windows: the first time you may need to install the WinUSB driver for the device (VID 0483, PID DF11) with Zadig (zadig.akeo.ie).</li>
+      <li>Linux: give the device permission with a udev rule: <code>SUBSYSTEMS=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="df11", MODE="0666"</code></li>
+      <li>If an update is interrupted, nothing is lost: put the device in update mode again and run it again.</li>
+    </ul>
+  </details>
+
+  <details id="adv" hidden>
+    <summary>Advanced: flash another file</summary>
+    <p>Only if NANO Industries sent you a .bin file for this device. It is checked before flashing.</p>
+    <input type="file" id="file" accept=".bin,application/octet-stream">
+  </details>
+
+  <footer>NANO Industries · Valencia, SPAIN<div class="tester" id="tester"></div></footer>
+</main>
+
+<script>
+"use strict";
+
+// This page's build, stamped by build.py. products.json (never cached) names the current one: a
+// copy the browser or the CDN kept from an older publish reloads itself as the new one.
+const PAGE_ID = "8839782b99c3";
+
+// Tester mode. Products marked "unreleased" in products.json show only to testers: one enters the
+// code once (TESTER, at the foot of the page) and this browser keeps its salted hash — never the
+// code — and shows them from then on. It hides, it does not protect: the site is static and its
+// repository public.
+const TESTER_KEY = "nanoTester";
+async function sha256hex(s) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, "0")).join("");
+}
+function testerOn(cat) {
+  try { return !!cat.tester && localStorage.getItem(TESTER_KEY) === cat.tester.hash; } catch (e) { return false; }
+}
+async function testerUnlock(cat, code) {
+  if (!cat.tester || !code.trim()) return false;
+  const h = await sha256hex(cat.tester.salt + code.trim().toLowerCase());   // case does not matter
+  if (h !== cat.tester.hash) return false;
+  try { localStorage.setItem(TESTER_KEY, h); } catch (e) {}
+  return true;
+}
+function testerLock() { try { localStorage.removeItem(TESTER_KEY); } catch (e) {} }
+// The control at the foot: "Tester" opens a code field; in tester mode, "Tester mode · Exit".
+function testerControl(box, cat, changed) {
+  box.replaceChildren();
+  if (!cat.tester) return;
+  const link = (text, fn) => { const a = document.createElement("button"); a.type = "button"; a.className = "tlink"; a.textContent = text; a.onclick = fn; return a; };
+  if (testerOn(cat)) {
+    const s = document.createElement("span"); s.className = "tgranted"; s.textContent = "Tester access granted · ";
+    box.append(s, link("Exit", () => { testerLock(); changed(); }));
+    return;
+  }
+  const open = link("Hardware tester access", () => {
+    box.replaceChildren();
+    const f = document.createElement("form"); f.className = "tform";
+    const i = document.createElement("input"); i.type = "password"; i.autocomplete = "off"; i.placeholder = "Access code";
+    const b = document.createElement("button"); b.type = "submit"; b.textContent = "Enter";
+    const m = document.createElement("span"); m.className = "tmsg";
+    f.append(i, b, m);
+    f.onsubmit = async ev => {
+      ev.preventDefault();
+      if (await testerUnlock(cat, i.value)) changed();
+      else { m.textContent = "Access denied"; i.select(); }
+    };
+    box.append(f); i.focus();
+  });
+  open.classList.add("tgate");
+  box.append(open);
+}
+
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const hex = s => (typeof s === "number" ? s : parseInt(s, 16));
+
+// ---------------------------------------------------------------------------------------------
+// DfuSe over WebUSB: the protocol dfu-util speaks to STM32 DFU devices (the chip's own ROM
+// bootloader, and the Daisy bootloader).
+// ---------------------------------------------------------------------------------------------
+const REQ = { DNLOAD: 1, UPLOAD: 2, GETSTATUS: 3, CLRSTATUS: 4, ABORT: 6 };
+const STATE = { dfuIDLE: 2, dfuDNBUSY: 4, dfuERROR: 10 };
+
+class DfuSe {
+  constructor(device, intf, segments, transferSize) {
+    this.dev = device; this.intf = intf; this.segments = segments; this.ts = transferSize;
+  }
+  async out(request, value, data) {
+    const r = await this.dev.controlTransferOut(
+      { requestType: "class", recipient: "interface", request, value, index: this.intf }, data);
+    if (r.status !== "ok") throw new Error(`DFU request ${request}: ${r.status}`);
+  }
+  async in(request, value, length) {
+    const r = await this.dev.controlTransferIn(
+      { requestType: "class", recipient: "interface", request, value, index: this.intf }, length);
+    if (r.status !== "ok") throw new Error(`DFU request ${request}: ${r.status}`);
+    return r.data;
+  }
+  async status() {
+    const d = await this.in(REQ.GETSTATUS, 0, 6);
+    return { status: d.getUint8(0), poll: d.getUint8(1) | (d.getUint8(2) << 8) | (d.getUint8(3) << 16), state: d.getUint8(4) };
+  }
+  async idle() {               // from wherever the device was left, back to dfuIDLE
+    let s = await this.status();
+    if (s.state === STATE.dfuERROR) { await this.out(REQ.CLRSTATUS, 0); s = await this.status(); }
+    if (s.state !== STATE.dfuIDLE) { await this.out(REQ.ABORT, 0); s = await this.status(); }
+    if (s.state !== STATE.dfuIDLE) throw new Error(`DFU state ${s.state}`);
+  }
+  async settle() {             // a download is carried out on GETSTATUS: poll until it is done
+    for (;;) {
+      const s = await this.status();
+      if (s.status !== 0) throw new Error(`DFU status ${s.status}`);
+      if (s.state === STATE.dfuDNBUSY) { await sleep(Math.max(s.poll, 2)); continue; }
+      return s;
+    }
+  }
+  async command(op, addr) {    // DfuSe special commands: 0x21 set address, 0x41 erase sector
+    const b = new Uint8Array([op, addr & 0xff, (addr >>> 8) & 0xff, (addr >>> 16) & 0xff, (addr >>> 24) & 0xff]);
+    await this.out(REQ.DNLOAD, 0, b);
+    await this.settle();
+  }
+  sectorsFor(addr, len) {      // the erasable sectors that cover [addr, addr + len)
+    const out = [];
+    for (let a = addr; a < addr + len;) {
+      const seg = this.segments.find(s => a >= s.start && a < s.end);
+      if (!seg) throw new Error(`no memory at 0x${a.toString(16)}`);
+      const sector = seg.start + Math.floor((a - seg.start) / seg.size) * seg.size;
+      out.push(sector);
+      a = sector + seg.size;
+    }
+    return out;
+  }
+  async erase(addr, len, progress) {
+    const sectors = this.sectorsFor(addr, len);
+    for (let i = 0; i < sectors.length; i++) { progress(i + 1, sectors.length); await this.command(0x41, sectors[i]); }
+  }
+  async write(addr, bytes, progress) {
+    for (let off = 0; off < bytes.length; off += this.ts) {
+      await this.command(0x21, addr + off);
+      await this.out(REQ.DNLOAD, 2, bytes.subarray(off, Math.min(off + this.ts, bytes.length)));
+      await this.settle();
+      progress(Math.min(off + this.ts, bytes.length) / bytes.length);
+    }
+  }
+  async read(addr, len, progress) {   // the ROM bootloader reads back what it holds
+    await this.command(0x21, addr);
+    await this.idle();
+    const out = new Uint8Array(len);
+    for (let off = 0, block = 2; off < len; off += this.ts, block++) {
+      const d = await this.in(REQ.UPLOAD, block, Math.min(this.ts, len - off));
+      out.set(new Uint8Array(d.buffer, d.byteOffset, d.byteLength), off);
+      progress(Math.min(off + this.ts, len) / len);
+    }
+    await this.idle();
+    return out;
+  }
+  async leave(addr) {          // point at the app, then an empty download: the device runs it
+    await this.command(0x21, addr);
+    await this.out(REQ.DNLOAD, 0, new Uint8Array(0));
+    try { await this.status(); } catch (e) { /* it is already gone, as it should be */ }
+  }
+}
+
+// "@Flash /0x90000000/64*4Kg/0x90040000/60*64Kg/..." -> [{start, end, size}]
+function parseLayout(name) {
+  const parts = name.split("/").map(s => s.trim());
+  const segs = [];
+  for (let i = 1; i + 1 < parts.length; i += 2) {
+    let a = parseInt(parts[i], 16);
+    for (const g of parts[i + 1].split(",")) {
+      const m = /^(\d+)\*(\d+)([BKM ]?)(.)$/.exec(g.trim());
+      if (!m) continue;
+      const mult = m[3] === "K" ? 1024 : m[3] === "M" ? 1048576 : 1;
+      const size = parseInt(m[2], 10) * mult, count = parseInt(m[1], 10);
+      segs.push({ start: a, end: a + size * count, size });
+      a += size * count;
+    }
+  }
+  return segs;
+}
+
+async function configDescriptor(dev) {
+  const head = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0200, index: 0 }, 4);
+  const total = head.data.getUint16(2, true);
+  const r = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0200, index: 0 }, total);
+  return r.data;
+}
+async function stringDescriptor(dev, index, langid) {
+  const r = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0300 | index, index: langid }, 255);
+  const d = r.data;
+  let s = "";
+  for (let i = 2; i + 1 < Math.min(d.getUint8(0), d.byteLength); i += 2) s += String.fromCharCode(d.getUint16(i, true));
+  return s;
+}
+// Each DFU alternate's name ("@Flash /0x90000000/..."), read from the device itself: Chrome's
+// alt.interfaceName is often empty (macOS especially), and that name is the memory map.
+async function interfaceNames(dev) {
+  const names = {};
+  try {
+    const d = await configDescriptor(dev);
+    const lang = await dev.controlTransferIn({ requestType: "standard", recipient: "device", request: 6, value: 0x0300, index: 0 }, 255);
+    const langid = lang.data.byteLength >= 4 ? lang.data.getUint16(2, true) : 0x0409;
+    for (let i = 0; i + 1 < d.byteLength;) {
+      const len = d.getUint8(i), type = d.getUint8(i + 1);
+      if (len === 0) break;
+      if (type === 0x04 && len >= 9 && d.getUint8(i + 8) !== 0)
+        names[`${d.getUint8(i + 2)}/${d.getUint8(i + 3)}`] = await stringDescriptor(dev, d.getUint8(i + 8), langid);
+      i += len;
+    }
+  } catch (e) {}
+  return names;
+}
+// wTransferSize from the DFU functional descriptor (type 0x21).
+async function transferSize(dev) {
+  try {
+    const d = await configDescriptor(dev);
+    for (let i = 0; i + 1 < d.byteLength;) {
+      const len = d.getUint8(i), type = d.getUint8(i + 1);
+      if (len === 0) break;
+      if (type === 0x21 && len >= 7) return d.getUint16(i + 5, true);
+      i += len;
+    }
+  } catch (e) {}
+  return 1024;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The product (products.json, by this page's folder) and what it accepts
+// ---------------------------------------------------------------------------------------------
+let P = null, slug = "";
+let builds = [];       // firmware.json: one build, or one per model ("variants")
+let firmware = null;   // what step 3 flashes: { bytes, button, label, done }
+let dfu = null;
+let busy = false;
+
+// Is this DFU interface the one this product's firmware goes through?
+//   daisy:     the Daisy bootloader, whose memory map holds the app address; the chip's ROM
+//              bootloader is refused (writing internal flash would erase the Daisy bootloader).
+//   stm32-rom: the chip's own ROM bootloader, and the right chip: its memory map must match the
+//              product's layoutPattern, so a different chip is never written. (Two products on
+//              the same chip look alike over DFU; step 2 asks for this one alone.)
+function judge(name) {
+  const rom = /^@Internal Flash/i.test(name);
+  const segs = parseLayout(name);
+  const addr = hex(P.address);
+  const covers = segs.some(s => addr >= s.start && addr < s.end);
+  if (P.bootloader === "daisy") {
+    if (rom) return { why: P.steps && P.steps.wrongPort ? `That is the chip's built-in bootloader, not this device's update mode. ${P.steps.wrongPort}` : "That is the chip's built-in bootloader, not this device's update mode." };
+    if (!covers) return { why: `That device is not a ${P.name} in update mode.` };
+    return { segs };
+  }
+  if (P.bootloader === "stm32-rom") {
+    if (!rom) return { why: `That device is not a ${P.name} in DFU mode.` };
+    const pat = P.layoutPattern ? new RegExp(P.layoutPattern, "i") : null;
+    if (!pat || !pat.test(name.replace(/\s+/g, " ").trim())) return { why: `That chip is not the one in a ${P.name}.` };
+    if (!covers) return { why: `That device is not a ${P.name} in DFU mode.` };
+    return { segs };
+  }
+  return { why: "This device is not supported yet." };
+}
+
+// The firmware's vector table: its reset handler where this product's builds put it.
+function checkFirmware(buf) {
+  if (buf.byteLength < 1024) return "it is too small";
+  if (P.maxSize && buf.byteLength > P.maxSize) return "it is too large";
+  const v = new DataView(buf);
+  const reset = v.getUint32(4, true);
+  const ranges = (P.resetVector || []).map(r => [hex(r[0]), hex(r[1])]);
+  if (!(reset & 1) || !ranges.some(r => reset >= r[0] && reset < r[1]))
+    return `it is not ${P.name} firmware (reset vector 0x${reset.toString(16)})`;
+  return null;
+}
+
+function setStatus(el, text, kind) { el.textContent = text || ""; el.className = "status" + (kind ? " " + kind : ""); }
+function setPhase(text, kind) { $("phase").textContent = text || ""; $("phase").style.color = kind ? `var(--${kind})` : ""; }
+function setBar(f) { $("bar").style.width = `${Math.round(f * 100)}%`; $("pct").textContent = `${Math.round(f * 100)}%`; }
+function refresh() {
+  if (firmware) { $("fw").textContent = firmware.label; $("flash").textContent = firmware.button; }
+  else $("flash").textContent = "Update";
+  $("flash").disabled = !(firmware && dfu) || busy;
+  $("connect").disabled = busy || !navigator.usb || !(firmware || builds.length > 1);
+  dashes();
+}
+// The page dashes in the header, one per step: done, the one to do now, the rest.
+function dashes() {
+  const steps = [...document.querySelectorAll("#steps > li")].filter(li => !li.hidden);
+  if ($("steps").hidden) { $("dashes").replaceChildren(); return; }
+  let now = false;
+  $("dashes").replaceChildren(...steps.map(li => {
+    const i = document.createElement("i");
+    if (li.classList.contains("done")) i.className = "done";
+    else if (!now) { i.className = "now"; now = true; }
+    return i;
+  }));
+}
+function numberSteps() {
+  let n = 0;
+  for (const li of document.querySelectorAll("#steps > li")) if (!li.hidden) li.querySelector(".num").textContent = ++n;
+}
+const modeStep = () => $("s1").querySelector(".num").textContent;
+
+// When a build was made: its "date", or the day it was published.
+const buildDate = b => b.date || (b.built || "").slice(0, 10);
+
+// A published build, fetched and checked against its firmware.json entry and this product.
+async function loadBuild(b, named) {
+  const buf = await (await fetch(b.file, { cache: "no-store" })).arrayBuffer();
+  const sum = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buf)))
+    .map(x => x.toString(16).padStart(2, "0")).join("");
+  if (sum !== b.sha256 || buf.byteLength !== b.size) throw new Error("checksum");
+  if (checkFirmware(buf)) throw new Error("vector");
+  const date = buildDate(b);
+  const tag = b.version ? `v${b.version}` : `the ${date} build`;
+  const kb = `${Math.round(buf.byteLength / 1024)} KB`;
+  return {
+    bytes: new Uint8Array(buf), button: `Update to ${tag}`,
+    label: (named ? `${b.name} · ` : "") + `Firmware ${b.version ? tag : ""}${date ? (b.version ? " of " : "of ") + date : ""} · ${kb}`,
+    done: named ? `Done. It now runs the ${b.name} firmware, ${tag}.` : `Done. The ${P.name} now runs ${tag}.`,
+  };
+}
+function chooseBuild(b) {
+  firmware = null; refresh();
+  loadBuild(b, true).then(f => { firmware = f; $("s0").classList.add("done"); })
+    .catch(() => { $("fw").textContent = `The ${b.name} firmware could not be loaded.`; })
+    .finally(refresh);
+}
+function unavailable(text) {
+  $("unavailable").textContent = text;
+  $("unavailable").hidden = false;
+  $("fw").textContent = "";
+}
+
+async function start() {
+  slug = location.pathname.replace(/\/index\.html$/, "").replace(/\/+$/, "").split("/").pop();
+  let cat;
+  try { cat = await (await fetch("../products.json", { cache: "no-store" })).json(); }
+  catch (e) { unavailable("The product list could not be loaded."); return; }
+  if (cat.page && cat.page !== PAGE_ID && new URLSearchParams(location.search).get("v") !== cat.page) {
+    location.replace(location.pathname + "?v=" + cat.page);
+    return;
+  }
+  P = cat.products[slug];
+  if (!P) { unavailable("Unknown device."); return; }
+  // An unreleased product is a tester's only: anyone else gets this, and the code field.
+  testerControl($("tester"), cat, () => location.reload());
+  if (P.unreleased && !testerOn(cat)) {
+    document.title = "NANO Updater";
+    $("pname").textContent = "Not available";
+    $("lead").textContent = "This updater is not available.";
+    $("fw").textContent = "";
+    return;
+  }
+  const group = (cat.groups || []).find(g => g.products.includes(slug));
+  if (group && group.accent) document.documentElement.style.setProperty("--accent", group.accent);
+  document.title = `${P.name} Updater · NANO Industries`;
+  $("pname").textContent = P.name;
+  if (P.unreleased) $("pname").insertAdjacentHTML("beforeend", '<span class="badge">Unreleased</span>');
+  const dev = P.device || "device";
+  if (!P.bootloader || !P.steps) {
+    $("lead").textContent = `Firmware updates for the ${P.name} are not available here yet.`;
+    $("fw").textContent = "";
+    return;
+  }
+  $("lead").textContent = `Update your ${P.name}'s firmware from the browser.` + (P.settingsKept ? " Your settings are kept." : "");
+  $("s1h").textContent = `Put the ${dev} in update mode`;
+  for (const s of P.steps.mode || []) { const li = document.createElement("li"); li.textContent = s; $("modeSteps").appendChild(li); }
+  if (P.steps.screen) {
+    for (const s of P.steps.screen) { const d = document.createElement("div"); d.textContent = s; $("glass").appendChild(d); }
+    $("glass").hidden = false;
+  }
+  $("connectText").textContent = (P.steps.connect || "") + (P.bootloader === "stm32-rom"
+    ? ` Connect only the ${P.name}: over DFU the browser cannot tell it from another device with the same chip.` : "");
+  $("connect").textContent = `Find the ${P.name}`;
+  $("s3text").textContent = `Do not unplug or power off the ${dev} until it finishes. It takes a few seconds.`;
+  if (P.steps.exit) { const li = document.createElement("li"); li.textContent = P.steps.exit; $("helpList").appendChild(li); }
+  $("steps").hidden = false; $("help").hidden = false; $("adv").hidden = false;
+  if (!navigator.usb) $("nousb").hidden = false;
+
+  try {
+    const res = await fetch("firmware.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("none");
+    const m = await res.json();
+    builds = m.variants || [m];
+    if (builds.length > 1) {
+      // Several models of this product, each with its own firmware: the owner picks theirs. No
+      // default, so the choice is always made on purpose.
+      $("s0h").textContent = `Which ${P.name} is it?`;
+      for (const b of builds) {
+        const row = document.createElement("label"), radio = document.createElement("input");
+        const name = document.createElement("span"), what = document.createElement("small");
+        row.className = "choice";
+        radio.type = "radio"; radio.name = "variant";
+        radio.addEventListener("change", () => chooseBuild(b));
+        name.textContent = b.name;
+        what.textContent = b.version ? `v${b.version}` + (buildDate(b) ? ` · ${buildDate(b)}` : "") : buildDate(b);
+        row.append(radio, name, what);
+        $("variants").appendChild(row);
+      }
+      $("s0").hidden = false;
+      $("fw").textContent = `${builds.length} models: pick yours in step 1.`;
+    } else {
+      firmware = await loadBuild(builds[0], false);
+    }
+  } catch (e) {
+    $("fw").textContent = e.message === "none" ? `No ${P.name} firmware has been published yet.` : "This page's firmware could not be loaded.";
+  }
+  numberSteps();
+  refresh();
+}
+
+$("file").addEventListener("change", async ev => {
+  const f = ev.target.files[0];
+  if (!f || !P) return;
+  const buf = await f.arrayBuffer();
+  const bad = checkFirmware(buf);
+  if (bad) { setPhase(`That file cannot be flashed: ${bad}.`, "err"); ev.target.value = ""; return; }
+  firmware = { bytes: new Uint8Array(buf), button: `Update to ${f.name}`, label: `File ${f.name} · ${Math.round(buf.byteLength / 1024)} KB`,
+               done: `Done. The ${P.name} now runs ${f.name}.` };
+  setPhase("");
+  refresh();
+});
+
+$("connect").addEventListener("click", async () => {
+  setStatus($("connStatus"), "");
+  dfu = null;
+  refresh();
+  let device;
+  try {
+    device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x0483, productId: 0xdf11 }] });
+  } catch (e) {
+    setStatus($("connStatus"), "No device was picked.", "warn");
+    return;
+  }
+  try {
+    await device.open();
+    if (!device.configuration) await device.selectConfiguration(1);
+    let names = null, pick = null, refusal = null;
+    const seen = [];
+    for (const intf of device.configuration.interfaces) {
+      for (const alt of intf.alternates) {
+        if (alt.interfaceClass !== 0xfe || alt.interfaceSubclass !== 0x01) continue;
+        let name = alt.interfaceName || "";
+        if (!name) {
+          if (!names) names = await interfaceNames(device);
+          name = names[`${intf.interfaceNumber}/${alt.alternateSetting}`] || "";
+        }
+        seen.push(name || "?");
+        const j = judge(name);
+        if (j.segs && !pick) pick = { intf: intf.interfaceNumber, alt: alt.alternateSetting, segs: j.segs };
+        else if (!j.segs && !refusal) refusal = j.why;
+      }
+    }
+    if (!pick) {
+      await device.close();
+      setStatus($("connStatus"), `${refusal || "That device has no DFU interface."} (${seen.join(" | ") || "nothing"})`, "err");
+      return;
+    }
+    await device.claimInterface(pick.intf);
+    await device.selectAlternateInterface(pick.intf, pick.alt);
+    dfu = new DfuSe(device, pick.intf, pick.segs, await transferSize(device));
+    await dfu.idle();
+    setStatus($("connStatus"), `${P.name} in update mode. Ready.`, "ok");
+    $("s1").classList.add("done"); $("s2").classList.add("done");
+  } catch (e) {
+    dfu = null;
+    try { await device.close(); } catch (e2) {}
+    setStatus($("connStatus"), "The device could not be opened. Is another program using it?", "err");
+  }
+  refresh();
+});
+
+$("flash").addEventListener("click", async () => {
+  if (!dfu || !firmware || busy) return;
+  busy = true; refresh();
+  const bytes = firmware.bytes, done = firmware.done, addr = hex(P.address);
+  const verify = P.bootloader === "stm32-rom";   // the Daisy bootloader answers reads encoded
+  try {
+    setBar(0); setPhase("Getting ready…");
+    await dfu.idle();
+    await dfu.erase(addr, bytes.length, (i, n) => { setPhase(`Erasing ${i}/${n}…`); setBar(0.15 * i / n); });
+    await dfu.write(addr, bytes, f => { setPhase("Writing…"); setBar(0.15 + (verify ? 0.6 : 0.8) * f); });
+    if (verify) {
+      const back = await dfu.read(addr, bytes.length, f => { setPhase("Checking…"); setBar(0.75 + 0.2 * f); });
+      for (let i = 0; i < bytes.length; i++)
+        if (back[i] !== bytes[i]) throw new Error(`check failed at 0x${(addr + i).toString(16)}`);
+    }
+    setPhase(`Restarting the ${P.device || "device"}…`); setBar(1);
+    await dfu.leave(addr);
+    setPhase(done, "ok");
+    $("s3").classList.add("done");
+  } catch (e) {
+    setPhase(/check failed/.test(e.message)
+      ? `The firmware did not read back as written (${e.message}). Run the update again from step ${modeStep()}.`
+      : `The connection was lost. Run the update again from step ${modeStep()}.`, "err");
+  }
+  dfu = null; busy = false;
+  setStatus($("connStatus"), "");
+  refresh();
+});
+
+start();
+</script>
+</body>
+</html>

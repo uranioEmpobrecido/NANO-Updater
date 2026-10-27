@@ -4,7 +4,8 @@
       "name": "NANO Performance",
       "products": [
         "iso-f1",
-        "fx-dr2"
+        "fx-dr2",
+        "master-unit"
       ]
     },
     {
@@ -21,6 +22,37 @@
   "products": {
     "fx-dr2": {
       "name": "FX-DR2",
+      "unreleased": true,
+      "description": "Work in progress",
+      "device": "pedal",
+      "bootloader": "daisy",
+      "address": "0x90040000",
+      "resetVector": [
+        [
+          "0x24000000",
+          "0x24078000"
+        ]
+      ],
+      "maxSize": 491520,
+      "settingsKept": true,
+      "steps": {
+        "mode": [
+          "With the pedal off, hold down either of the two MODE buttons.",
+          "Power it on, still holding MODE, until the screen says:"
+        ],
+        "screen": [
+          "FIRMWARE UPDATE",
+          "USB-C ON THE BACK",
+          "POWER OFF TO EXIT"
+        ],
+        "connect": "Connect the USB-C on the back of the pedal straight to the computer, with no hub or adapter in between.",
+        "wrongPort": "Use the USB-C on the back of the pedal, with the pedal in FIRMWARE UPDATE.",
+        "exit": "To leave update mode without updating, power the pedal off and on."
+      },
+      "chip": "STM32H750 (Daisy)"
+    },
+    "master-unit": {
+      "name": "MASTER-Unit",
       "unreleased": true,
       "description": "Work in progress",
       "device": "pedal",
