@@ -210,7 +210,26 @@
 
 // This page's build, stamped by build.py. products.json (never cached) names the current one: a
 // copy the browser or the CDN kept from an older publish reloads itself as the new one.
-const PAGE_ID = "8839782b99c3";
+const PAGE_ID = "56c166ae39ea";
+
+// Firmware signing. Every firmware.json is signed with NANO's Ed25519 key, whose private half
+// never leaves an offline machine. Below is its public half. The page refuses any firmware whose
+// signature does not verify, so someone who can rewrite a .bin and its firmware.json on the server
+// still cannot make a browser flash it: the manifest carries the binary's SHA-256, the signature
+// covers the manifest, and only NANO can produce that signature.
+// What this does NOT defend against: a compromise deep enough to rewrite this page, since whoever
+// does that controls the key below too. That case is for detection, not prevention.
+const FIRMWARE_KEY = "z8XcNlRjuw9CpR+wZUcyxRT3PN9/iydT+vZlUKSZWpY=";
+const b64bytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+// Verifies a detached signature over the manifest's bytes AS RECEIVED. They must be those exact
+// bytes: parsing the JSON and re-serialising it would change the whitespace and never verify.
+async function signedOk(bytes, sig) {
+  try {
+    const key = await crypto.subtle.importKey("raw", b64bytes(FIRMWARE_KEY), { name: "Ed25519" }, false, ["verify"]);
+    return await crypto.subtle.verify("Ed25519", key, sig, bytes);
+  } catch (e) { return false; }
+}
 
 // Tester mode. Products marked "unreleased" in products.json show only to testers: one enters the
 // code once (TESTER, at the foot of the page) and this browser keeps its salted hash — never the
@@ -570,7 +589,11 @@ async function start() {
   try {
     const res = await fetch("firmware.json", { cache: "no-store" });
     if (!res.ok) throw new Error("none");
-    const m = await res.json();
+    const raw = new Uint8Array(await res.arrayBuffer());
+    const sigRes = await fetch("firmware.json.sig", { cache: "no-store" });
+    if (!sigRes.ok) throw new Error("unsigned");
+    if (!await signedOk(raw, new Uint8Array(await sigRes.arrayBuffer()))) throw new Error("badsig");
+    const m = JSON.parse(new TextDecoder().decode(raw));
     builds = m.variants || [m];
     if (builds.length > 1) {
       // Several models of this product, each with its own firmware: the owner picks theirs. No
@@ -593,7 +616,11 @@ async function start() {
       firmware = await loadBuild(builds[0], false);
     }
   } catch (e) {
-    $("fw").textContent = e.message === "none" ? `No ${P.name} firmware has been published yet.` : "This page's firmware could not be loaded.";
+    $("fw").textContent = {
+      none: `No ${P.name} firmware has been published yet.`,
+      unsigned: `This firmware carries no NANO signature, so it will not be offered. Please tell NANO before flashing anything.`,
+      badsig: `This firmware does not carry a valid NANO signature and will not be offered. Do not flash it from anywhere else \u2014 please tell NANO.`,
+    }[e.message] || "This page's firmware could not be loaded.";
   }
   numberSteps();
   refresh();

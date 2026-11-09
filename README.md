@@ -10,6 +10,7 @@ https://uranioempobrecido.github.io/NANO-Updater/
   as "Coming soon".
 - `template.html`: the one updater page every product uses. `build.py` copies it into each
   product's folder.
+- `<slug>/firmware.json.sig`: the Ed25519 signature over that manifest (see **Signing**).
 - `<slug>/firmware.json` + `<slug>/firmware/*.bin`: each product's firmware. A product with
   several models (Performance Mixer) lists them under `variants`, and its page asks which one
   the device is before anything can be flashed.
@@ -36,3 +37,35 @@ https://uranioempobrecido.github.io/NANO-Updater/
   `products.json` and the firmware files can still be read by anyone who looks.
 
 After editing `products.json` or `template.html`, run `python3 build.py`, then commit and push.
+
+## Signing
+
+Every `firmware.json` is signed, and the pages refuse firmware whose signature does not
+verify. The manifest carries the binary's SHA-256 and the signature covers the manifest, so
+one signature protects the whole chain down to the bytes.
+
+The point is what it defends against. The page already checked each download against the
+`sha256` in `firmware.json` — but whoever can replace a binary on the server can replace that
+file too, and the checksum then verifies happily against *their* build. With signing they
+would also need the private key, which is not on any server.
+
+    ~/.nano/firmware-signing/nano-firmware-ed25519.pem     private, never leaves the machine
+    FIRMWARE_KEY in template.html                          its public half
+
+`release.py` and the two project publishers (`NANO-FX-DR`, `MASTER-Unit`) sign as they
+publish. Override the key path with `NANO_SIGNING_KEY` if you need to.
+
+**Back the private key up, offline.** Losing it does not endanger anything, but you cannot
+publish again until you generate a new pair and ship a page carrying the new public half:
+
+    openssl genpkey -algorithm ed25519 -out nano-firmware-ed25519.pem
+    openssl pkey -in nano-firmware-ed25519.pem -pubout -outform DER | tail -c 32 | base64
+
+Then put that string in `FIRMWARE_KEY`, run `build.py`, and re-sign every `firmware.json`.
+Rotating is cheap precisely because the public half lives in a page you control — so if the
+key is ever exposed, rotate rather than agonise.
+
+**What this does not do.** It does not protect against a compromise deep enough to rewrite
+`template.html`, because whoever does that controls the embedded public key as well. That case
+is covered by detection instead: the WEB-Check monitor holds the SHA-256 of every published
+binary and alerts on any change it was not told about.
