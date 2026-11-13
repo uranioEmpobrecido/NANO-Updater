@@ -5,7 +5,7 @@
       "products": [
         "iso-f1",
         "fx-dr2",
-        "master-unit"
+        "mu-x1"
       ]
     },
     {
@@ -51,8 +51,8 @@
       },
       "chip": "STM32H750 (Daisy)"
     },
-    "master-unit": {
-      "name": "MASTER-Unit",
+    "mu-x1": {
+      "name": "MU-X1",
       "unreleased": true,
       "description": "Work in progress",
       "device": "pedal",

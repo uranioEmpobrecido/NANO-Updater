@@ -1,9 +1,0 @@
-{
-  "product": "MASTER-Unit",
-  "version": "0.11",
-  "date": "2026-10-28",
-  "file": "firmware/master-unit-0.11.bin",
-  "size": 183288,
-  "sha256": "316a2d8f3b09d9536f82ee378224bc778fc316c7c9b35503443419f5063f7eff",
-  "built": "2026-10-28T16:41:54Z"
-}
