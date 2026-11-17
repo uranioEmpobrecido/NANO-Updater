@@ -1,9 +1,9 @@
 {
   "product": "MU-X1",
-  "version": "0.21",
-  "date": "2026-11-13",
-  "file": "firmware/mu-x1-0.21.bin",
-  "size": 193468,
-  "sha256": "a13d1f8bb1644789ba7a078405747b41e88adfbabcf0115d0124d86c01cc29c8",
-  "built": "2026-11-13T11:32:11Z"
+  "version": "0.22",
+  "date": "2026-11-17",
+  "file": "firmware/mu-x1-0.22.bin",
+  "size": 193692,
+  "sha256": "9dabfbba2f82bd7fad11d38215039b3ae865d2bf605e9ce9700c1ceef5eb25ad",
+  "built": "2026-11-17T15:54:02Z"
 }
